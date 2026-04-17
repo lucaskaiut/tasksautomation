@@ -41,7 +41,7 @@
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->status->value }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">
                                 <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                                    {{ $task->implementation_type->value }}
+                                    {{ $task->implementation_type?->value }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->review_status?->value ?? '—' }}</td>
