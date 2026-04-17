@@ -1,0 +1,1393 @@
+openapi: 3.1.0
+info:
+  title: Gestor de Tarefas API
+  version: 1.0.0
+  summary: API autenticada via Laravel Sanctum para gestão de projetos, tarefas, execuções e revisões.
+  description: |
+    Especificação OpenAPI gerada a partir das rotas, Form Requests, API Resources e testes de feature do projeto.
+
+    A API expõe fluxos para:
+    - emissão de token Bearer;
+    - cadastro e consulta de projetos;
+    - criação, atualização e distribuição de tarefas para workers;
+    - acompanhamento de execução via heartbeat;
+    - finalização técnica da tarefa;
+    - revisão funcional da execução.
+
+    Observações importantes:
+    - exceto `POST /api/tokens/create`, todos os endpoints exigem autenticação `Bearer`;
+    - a API usa o envelope `{ data, message }` nos retornos de item e `{ data, links, meta, message }` nas listagens paginadas;
+    - conflitos de regra de negócio retornam `409`;
+    - falhas de validação retornam `422`;
+    - o endpoint de claim pode retornar `204` quando não houver tarefa elegível.
+servers:
+  - url: http://localhost:8080
+    description: Ambiente local descrito no README
+tags:
+  - name: Auth
+    description: Emissão de token de acesso para clientes e workers.
+  - name: Projects
+    description: Gestão de projetos monitorados pela plataforma.
+  - name: Tasks
+    description: Gestão operacional das tarefas e seu ciclo de execução.
+  - name: Task Executions
+    description: Consulta do histórico técnico de execuções de uma tarefa.
+  - name: Task Reviews
+    description: Revisão funcional do resultado entregue por uma execução.
+paths:
+  /api/tokens/create:
+    post:
+      tags: [Auth]
+      operationId: createApiToken
+      summary: Criar token de acesso
+      description: |
+        Autentica um usuário por e-mail e senha e retorna um token Bearer do Sanctum.
+
+        Caso de uso:
+        - bootstrap de um worker automatizado;
+        - autenticação de um cliente backend;
+        - obtenção de token para chamadas subsequentes da API.
+      x-useCases:
+        - Autenticar um worker local antes de iniciar o polling de tarefas.
+        - Emitir um token com abilities específicas para uma integração.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTokenRequest'
+            examples:
+              default:
+                value:
+                  email: admin@example.com
+                  password: password
+                  token_name: worker
+                  abilities: ['*']
+      responses:
+        '201':
+          description: Token emitido com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTokenResponse'
+              examples:
+                success:
+                  value:
+                    data:
+                      token: 1|long-plain-text-token
+                      token_type: Bearer
+                    message: Token criado com sucesso.
+        '422':
+          description: Payload inválido ou credenciais incorretas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                invalidPayload:
+                  value:
+                    message: The password field is required.
+                    errors:
+                      email:
+                        - The email field must be a valid email address.
+                      password:
+                        - The password field is required.
+                invalidCredentials:
+                  value:
+                    message: Credenciais inválidas.
+                    errors:
+                      email:
+                        - Credenciais inválidas.
+  /api/projects:
+    get:
+      tags: [Projects]
+      security:
+        - bearerAuth: []
+      operationId: listProjects
+      summary: Listar projetos
+      description: |
+        Retorna os projetos paginados em ordem decrescente de criação.
+
+        Caso de uso:
+        - alimentar o painel administrativo;
+        - sincronizar a lista de projetos disponíveis para criação de tarefas.
+      x-useCases:
+        - Exibir a lista de projetos no dashboard.
+        - Permitir que um cliente selecione um projeto antes de criar uma tarefa.
+      responses:
+        '200':
+          description: Lista paginada de projetos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Projects]
+      security:
+        - bearerAuth: []
+      operationId: createProject
+      summary: Criar projeto
+      description: |
+        Cria um novo projeto. O campo `slug` é opcional; quando omitido, é gerado automaticamente a partir do nome.
+
+        Caso de uso:
+        - cadastrar um repositório novo para receber tarefas automatizadas;
+        - ativar ou desativar um projeto para distribuição de tarefas.
+      x-useCases:
+        - Registrar um repositório Git e sua branch padrão.
+        - Armazenar regras globais usadas pelos workers daquele projeto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectWriteRequest'
+            examples:
+              default:
+                value:
+                  name: API Project
+                  slug: api-project
+                  description: Projeto usado por integrações externas.
+                  repository_url: https://example.com/repo.git
+                  default_branch: main
+                  global_rules:
+                    review_required: true
+                    ci_provider: github_actions
+                  is_active: true
+      responses:
+        '201':
+          description: Projeto criado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/projects/{project}:
+    get:
+      tags: [Projects]
+      security:
+        - bearerAuth: []
+      operationId: showProject
+      summary: Consultar projeto
+      description: |
+        Retorna os dados completos de um projeto.
+
+        Caso de uso:
+        - abrir a tela de detalhes de um projeto;
+        - carregar metadados antes de criar ou editar tarefas vinculadas.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Projeto encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Projects]
+      security:
+        - bearerAuth: []
+      operationId: replaceProject
+      summary: Atualizar projeto
+      description: |
+        Atualiza um projeto existente. A API aceita `PUT` e `PATCH` na mesma rota.
+
+        Caso de uso:
+        - corrigir o repositório ou branch padrão;
+        - desativar um projeto para impedir novos claims de tarefas.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectWriteRequest'
+      responses:
+        '200':
+          description: Projeto atualizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Projects]
+      security:
+        - bearerAuth: []
+      operationId: updateProject
+      summary: Atualizar projeto parcialmente
+      description: Semântica equivalente ao `PUT` implementado pela aplicação.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectWriteRequest'
+      responses:
+        '200':
+          description: Projeto atualizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/tasks:
+    get:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: listTasks
+      summary: Listar tarefas
+      description: |
+        Retorna tarefas paginadas em ordem decrescente de criação, com projeto, perfil de ambiente e último revisor já embutidos.
+
+        Caso de uso:
+        - montar backlog operacional;
+        - acompanhar tarefas em revisão, execução ou bloqueadas.
+      x-useCases:
+        - Painel de acompanhamento das tarefas do sistema.
+        - Consulta de tarefas por um operador antes de revisar uma execução.
+      responses:
+        '200':
+          description: Lista paginada de tarefas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: createTask
+      summary: Criar tarefa
+      description: |
+        Cria uma nova tarefa para um projeto. Quando `environment_profile_id` é informado, ele deve pertencer ao mesmo projeto informado em `project_id`.
+
+        Caso de uso:
+        - registrar uma nova demanda para execução por worker;
+        - enfileirar tarefas com prioridade e contexto de ambiente.
+      x-useCases:
+        - Criar uma tarefa de implementação ou correção para um worker automatizado.
+        - Vincular a tarefa a um perfil de ambiente Docker específico.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskWriteRequest'
+            examples:
+              default:
+                value:
+                  project_id: 1
+                  environment_profile_id: 2
+                  title: Ajustar fluxo de login
+                  description: Corrigir a validação do callback de autenticação.
+                  deliverables: Pull request com testes atualizados.
+                  constraints: Não alterar contratos públicos da API.
+                  status: pending
+                  priority: high
+      responses:
+        '201':
+          description: Tarefa criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/tasks/{task}:
+    get:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: showTask
+      summary: Consultar tarefa
+      description: |
+        Retorna os detalhes completos de uma tarefa, incluindo relacionamentos carregados pelo resource.
+
+        Caso de uso:
+        - abrir a ficha de uma tarefa específica;
+        - recuperar o estado operacional atual antes de enviar heartbeat ou finalização.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Tarefa encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: replaceTask
+      summary: Atualizar tarefa
+      description: |
+        Atualiza uma tarefa existente. A API aceita `PUT` e `PATCH` na mesma rota.
+
+        Caso de uso:
+        - repriorizar uma tarefa;
+        - corrigir descrição, entregáveis ou vínculo de projeto.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskWriteRequest'
+      responses:
+        '200':
+          description: Tarefa atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: updateTask
+      summary: Atualizar tarefa parcialmente
+      description: Semântica equivalente ao `PUT` implementado pela aplicação.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskWriteRequest'
+      responses:
+        '200':
+          description: Tarefa atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/tasks/claim:
+    post:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: claimTask
+      summary: Claimar próxima tarefa elegível
+      description: |
+        Seleciona a próxima tarefa elegível para execução considerando:
+        - projeto ativo;
+        - status elegível para claim;
+        - `run_after` já vencido ou nulo;
+        - `locked_until` nulo ou expirado;
+        - `attempts < max_attempts`;
+        - prioridade (`high`, `medium`, `low`);
+        - data de criação mais antiga dentro da mesma prioridade.
+
+        Ao claimar:
+        - a tarefa muda para `claimed`;
+        - `claimed_by_worker`, `claimed_at` e `locked_until` são preenchidos;
+        - `attempts` é incrementado;
+        - uma nova execução técnica é criada com status `claimed`.
+
+        Caso de uso:
+        - loop de polling de um worker;
+        - distribuição automática de backlog.
+      x-useCases:
+        - Worker pede a próxima tarefa disponível para processar.
+        - Scheduler distribui a fila respeitando prioridade e ordenação temporal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimTaskRequest'
+      responses:
+        '200':
+          description: Uma tarefa elegível foi reservada para o worker.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskItemResponse'
+        '204':
+          description: Nenhuma tarefa elegível encontrada no momento.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/tasks/{task}/heartbeat:
+    post:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: sendTaskHeartbeat
+      summary: Registrar heartbeat da tarefa
+      description: |
+        Confirma que o worker ainda está processando a tarefa.
+
+        Comportamento:
+        - exige que `worker_id` seja o mesmo que reservou a tarefa;
+        - aceita tarefas em `claimed` ou `running`;
+        - se a tarefa estiver em `claimed`, ela passa para `running`;
+        - atualiza `last_heartbeat_at` e renova `locked_until` por 10 minutos.
+
+        Caso de uso:
+        - worker em execução prolongada;
+        - watchdog para evitar que a tarefa volte cedo para a fila.
+      x-useCases:
+        - Processo local envia heartbeat periódico enquanto executa testes ou gera PR.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerTaskRequest'
+      responses:
+        '200':
+          description: Heartbeat registrado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/tasks/{task}/finish:
+    post:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: finishTask
+      summary: Finalizar execução técnica da tarefa
+      description: |
+        Encerra a execução técnica da tarefa e atualiza a execução aberta do worker.
+
+        Regras principais:
+        - exige que `worker_id` seja o dono atual da tarefa;
+        - só aceita tarefas em `claimed` ou `running`;
+        - `status=done` ou `status=review` colocam a tarefa em `review` com `review_status=pending_review`;
+        - `status=failed`, `blocked` ou `cancelled` finalizam a tarefa diretamente nesses estados;
+        - `locked_until` é limpo ao final.
+
+        Caso de uso:
+        - worker terminou a implementação e quer submeter para revisão;
+        - worker concluiu que a tarefa falhou, bloqueou ou foi cancelada.
+      x-useCases:
+        - Enviar resumo técnico, branch, commit e URL do PR ao concluir o trabalho.
+        - Fechar uma execução como bloqueada quando depender de fator externo.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinishTaskRequest'
+            examples:
+              submitForReview:
+                value:
+                  worker_id: worker-local-01
+                  status: done
+                  execution_summary: Implementação concluída com testes passando.
+                  branch_name: feature/login-fix
+                  commit_sha: abc123def456
+                  pull_request_url: https://github.com/acme/repo/pull/10
+                  logs_path: storage/logs/worker/task-10.log
+                  metadata:
+                    test_command: php artisan test --compact
+              blocked:
+                value:
+                  worker_id: worker-local-01
+                  status: blocked
+                  execution_summary: Integração parada aguardando credenciais.
+                  failure_reason: Dependência externa indisponível.
+      responses:
+        '200':
+          description: Tarefa finalizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/tasks/{task}/executions:
+    get:
+      tags: [Task Executions]
+      security:
+        - bearerAuth: []
+      operationId: listTaskExecutions
+      summary: Listar execuções de uma tarefa
+      description: |
+        Retorna o histórico de execuções técnicas da tarefa em ordem decrescente de ID.
+
+        Caso de uso:
+        - auditoria operacional;
+        - tela de histórico da tarefa;
+        - apoio à revisão funcional.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Histórico de execuções da tarefa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskExecutionCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/task-executions/{taskExecution}:
+    get:
+      tags: [Task Executions]
+      security:
+        - bearerAuth: []
+      operationId: showTaskExecution
+      summary: Consultar execução específica
+      description: |
+        Retorna os detalhes de uma execução técnica individual, incluindo eventual revisão associada.
+
+        Caso de uso:
+        - abrir a execução a partir da UI;
+        - consultar PR, commit, logs e revisão vinculados.
+      parameters:
+        - $ref: '#/components/parameters/TaskExecutionId'
+      responses:
+        '200':
+          description: Execução encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskExecutionItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/task-executions/{taskExecution}/reviews:
+    post:
+      tags: [Task Reviews]
+      security:
+        - bearerAuth: []
+      operationId: createTaskReview
+      summary: Registrar revisão funcional
+      description: |
+        Registra a revisão funcional da execução finalizada.
+
+        Regras principais:
+        - a tarefa precisa estar em `review`;
+        - a execução precisa estar em `review` e já finalizada;
+        - cada execução aceita apenas uma revisão;
+        - `decision=approved` conclui a tarefa como `done`;
+        - `decision=needs_adjustment` devolve a tarefa para `pending`, incrementa `revision_count` e limpa o claim atual.
+
+        Caso de uso:
+        - aprovar a entrega de um worker;
+        - pedir ajustes com contexto detalhado do problema encontrado.
+      x-useCases:
+        - QA aprova uma implementação concluída.
+        - Revisor solicita uma nova rodada preservando escopo e descrevendo comportamento esperado.
+      parameters:
+        - $ref: '#/components/parameters/TaskExecutionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskReviewWriteRequest'
+            examples:
+              approved:
+                value:
+                  decision: approved
+                  notes: Aprovado em homologação.
+              needsAdjustment:
+                value:
+                  decision: needs_adjustment
+                  notes: Corrigir o redirecionamento após login.
+                  current_behavior: O usuário volta para a página pública.
+                  expected_behavior: O usuário deve cair no dashboard autenticado.
+                  preserve_scope: Manter a solução restrita ao fluxo de login.
+      responses:
+        '201':
+          description: Revisão registrada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskReviewItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum token
+  parameters:
+    ProjectId:
+      name: project
+      in: path
+      required: true
+      description: ID do projeto.
+      schema:
+        type: integer
+        minimum: 1
+    TaskId:
+      name: task
+      in: path
+      required: true
+      description: ID da tarefa.
+      schema:
+        type: integer
+        minimum: 1
+    TaskExecutionId:
+      name: taskExecution
+      in: path
+      required: true
+      description: ID da execução técnica da tarefa.
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido ou expirado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageError'
+          examples:
+            default:
+              value:
+                message: Unauthenticated.
+    Forbidden:
+      description: Operação proibida pela regra de autorização.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageError'
+          examples:
+            wrongWorker:
+              value:
+                message: Esta tarefa foi reservada por outro worker.
+    NotFound:
+      description: Recurso não encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageError'
+          examples:
+            default:
+              value:
+                message: No query results for model [App\\Models\\Task] 999
+    Conflict:
+      description: Conflito de estado ou regra de negócio.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageError'
+          examples:
+            invalidTaskState:
+              value:
+                message: A tarefa não está em um estado válido para finalização.
+            duplicatedReview:
+              value:
+                message: Esta execução já possui revisão registrada.
+    ValidationError:
+      description: Dados inválidos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+  schemas:
+    CreateTokenRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          maxLength: 255
+          writeOnly: true
+        token_name:
+          type: string
+          maxLength: 255
+          default: worker
+        abilities:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+          default: ['*']
+    CreateTokenResponse:
+      type: object
+      required: [data, message]
+      properties:
+        data:
+          type: object
+          required: [token, token_type]
+          properties:
+            token:
+              type: string
+            token_type:
+              type: string
+              const: Bearer
+        message:
+          type: string
+    ProjectWriteRequest:
+      type: object
+      required: [name, repository_url]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        slug:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+          pattern: '^[A-Za-z0-9_-]+$'
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 2000
+        repository_url:
+          type: string
+          format: uri
+          maxLength: 2048
+        default_branch:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        global_rules:
+          description: Aceita JSON arbitrário; a aplicação também converte string JSON válida para estrutura.
+        is_active:
+          type: boolean
+          default: true
+    TaskWriteRequest:
+      type: object
+      required: [project_id, title, description, priority]
+      properties:
+        project_id:
+          type: integer
+          minimum: 1
+        environment_profile_id:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        deliverables:
+          type:
+            - string
+            - 'null'
+        constraints:
+          type:
+            - string
+            - 'null'
+        status:
+          type:
+            - string
+            - 'null'
+          enum: [draft, pending, claimed, running, review, needs_adjustment, done, failed, blocked, cancelled, null]
+        priority:
+          type: string
+          enum: [low, medium, high]
+    ClaimTaskRequest:
+      allOf:
+        - $ref: '#/components/schemas/WorkerTaskRequest'
+    WorkerTaskRequest:
+      type: object
+      required: [worker_id]
+      properties:
+        worker_id:
+          type: string
+          maxLength: 255
+    FinishTaskRequest:
+      type: object
+      required: [worker_id, status]
+      properties:
+        worker_id:
+          type: string
+          maxLength: 255
+        status:
+          type: string
+          enum: [done, review, failed, blocked, cancelled]
+        execution_summary:
+          type:
+            - string
+            - 'null'
+        failure_reason:
+          type:
+            - string
+            - 'null'
+        branch_name:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        commit_sha:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        pull_request_url:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+        logs_path:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+        metadata:
+          type:
+            - object
+            - 'null'
+          additionalProperties: true
+    TaskReviewWriteRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approved, needs_adjustment]
+        notes:
+          type:
+            - string
+            - 'null'
+          maxLength: 20000
+          description: Obrigatório quando `decision=needs_adjustment`.
+        current_behavior:
+          type:
+            - string
+            - 'null'
+          maxLength: 20000
+        expected_behavior:
+          type:
+            - string
+            - 'null'
+          maxLength: 20000
+        preserve_scope:
+          type:
+            - string
+            - 'null'
+          maxLength: 20000
+    Project:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - repository_url
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type:
+            - string
+            - 'null'
+        description:
+          type:
+            - string
+            - 'null'
+        repository_url:
+          type: string
+        default_branch:
+          type:
+            - string
+            - 'null'
+        global_rules:
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UserSummary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    EnvironmentProfileSummary:
+      type: object
+      required: [id, project_id, name, slug, is_default, docker_compose_yml]
+      properties:
+        id:
+          type: integer
+        project_id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        is_default:
+          type: boolean
+        docker_compose_yml:
+          type:
+            - string
+            - 'null'
+    Task:
+      type: object
+      required:
+        - id
+        - project_id
+        - created_by
+        - attempts
+        - max_attempts
+        - title
+        - description
+        - status
+        - review_status
+        - revision_count
+        - priority
+        - project
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        project_id:
+          type: integer
+        environment_profile_id:
+          type:
+            - integer
+            - 'null'
+        created_by:
+          type: integer
+        claimed_by_worker:
+          type:
+            - string
+            - 'null'
+        claimed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        started_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        finished_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_heartbeat_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        attempts:
+          type: integer
+        max_attempts:
+          type: integer
+        locked_until:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        failure_reason:
+          type:
+            - string
+            - 'null'
+        execution_summary:
+          type:
+            - string
+            - 'null'
+        run_after:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        title:
+          type: string
+        description:
+          type: string
+        deliverables:
+          type:
+            - string
+            - 'null'
+        constraints:
+          type:
+            - string
+            - 'null'
+        status:
+          type: string
+          enum: [draft, pending, claimed, running, review, needs_adjustment, done, failed, blocked, cancelled]
+        review_status:
+          type:
+            - string
+            - 'null'
+          enum: [pending_review, approved, needs_adjustment, null]
+        revision_count:
+          type: integer
+        last_reviewed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_reviewed_by:
+          type:
+            - integer
+            - 'null'
+        last_reviewer:
+          oneOf:
+            - $ref: '#/components/schemas/UserSummary'
+            - type: 'null'
+        priority:
+          type: string
+          enum: [low, medium, high]
+        project:
+          $ref: '#/components/schemas/Project'
+        environment_profile:
+          oneOf:
+            - $ref: '#/components/schemas/EnvironmentProfileSummary'
+            - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    TaskExecution:
+      type: object
+      required:
+        - id
+        - task_id
+        - worker_id
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        task_id:
+          type: integer
+        worker_id:
+          type: string
+        status:
+          type: string
+          enum: [claimed, running, review, done, failed, blocked, cancelled]
+        started_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        finished_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        summary:
+          type:
+            - string
+            - 'null'
+        failure_reason:
+          type:
+            - string
+            - 'null'
+        logs_path:
+          type:
+            - string
+            - 'null'
+        branch_name:
+          type:
+            - string
+            - 'null'
+        commit_sha:
+          type:
+            - string
+            - 'null'
+        pull_request_url:
+          type:
+            - string
+            - 'null'
+        metadata:
+          nullable: true
+        review:
+          oneOf:
+            - $ref: '#/components/schemas/TaskReview'
+            - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    TaskReview:
+      type: object
+      required:
+        - id
+        - task_id
+        - task_execution_id
+        - created_by
+        - decision
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        task_id:
+          type: integer
+        task_execution_id:
+          type: integer
+        created_by:
+          type: integer
+        decision:
+          type: string
+          enum: [approved, needs_adjustment]
+        notes:
+          type:
+            - string
+            - 'null'
+        current_behavior:
+          type:
+            - string
+            - 'null'
+        expected_behavior:
+          type:
+            - string
+            - 'null'
+        preserve_scope:
+          type:
+            - string
+            - 'null'
+        author:
+          oneOf:
+            - $ref: '#/components/schemas/UserSummary'
+            - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ProjectItemResponse:
+      type: object
+      required: [data, message]
+      properties:
+        data:
+          $ref: '#/components/schemas/Project'
+        message:
+          type: string
+    TaskItemResponse:
+      type: object
+      required: [data, message]
+      properties:
+        data:
+          $ref: '#/components/schemas/Task'
+        message:
+          type: string
+    TaskExecutionItemResponse:
+      type: object
+      required: [data, message]
+      properties:
+        data:
+          $ref: '#/components/schemas/TaskExecution'
+        message:
+          type: string
+    TaskReviewItemResponse:
+      type: object
+      required: [data, message]
+      properties:
+        data:
+          $ref: '#/components/schemas/TaskReview'
+        message:
+          type: string
+    PaginationLinks:
+      type: object
+      properties:
+        first:
+          type:
+            - string
+            - 'null'
+        last:
+          type:
+            - string
+            - 'null'
+        prev:
+          type:
+            - string
+            - 'null'
+        next:
+          type:
+            - string
+            - 'null'
+    PaginationMetaLink:
+      type: object
+      required: [url, label, active]
+      properties:
+        url:
+          type:
+            - string
+            - 'null'
+        label:
+          type: string
+        active:
+          type: boolean
+    PaginationMeta:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        from:
+          type:
+            - integer
+            - 'null'
+        last_page:
+          type: integer
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaginationMetaLink'
+        path:
+          type: string
+        per_page:
+          type: integer
+        to:
+          type:
+            - integer
+            - 'null'
+        total:
+          type: integer
+    ProjectCollectionResponse:
+      type: object
+      required: [data, links, meta, message]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        message:
+          type: string
+    TaskCollectionResponse:
+      type: object
+      required: [data, links, meta, message]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        message:
+          type: string
+    TaskExecutionCollectionResponse:
+      type: object
+      required: [data, message]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskExecution'
+        message:
+          type: string
+    MessageError:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ValidationError:
+      type: object
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
