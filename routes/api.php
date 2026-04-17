@@ -5,9 +5,11 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TaskExecutionController;
 use App\Http\Controllers\Api\TaskReviewController;
+use App\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\Route;
 
 Route::name('api.')->group(function () {
+    Route::get('health', HealthController::class)->name('health');
     Route::post('/tokens/create', [TokenController::class, 'store'])->name('tokens.create');
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -28,4 +30,3 @@ Route::name('api.')->group(function () {
         Route::post('task-executions/{taskExecution}/reviews', [TaskReviewController::class, 'store'])->name('task-executions.reviews.store');
     });
 });
-
