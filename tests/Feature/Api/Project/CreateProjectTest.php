@@ -34,6 +34,26 @@ class CreateProjectTest extends TestCase
         ]);
     }
 
+    public function test_can_create_project_with_ssh_repository_address(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects', [
+                'name' => 'SSH Project',
+                'slug' => 'ssh-project',
+                'repository_url' => 'git@github.com:acme/repo.git',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.repository_url', 'git@github.com:acme/repo.git');
+
+        $this->assertDatabaseHas('projects', [
+            'slug' => 'ssh-project',
+            'repository_url' => 'git@github.com:acme/repo.git',
+        ]);
+    }
+
     public function test_validation_errors_return_422(): void
     {
         $user = User::factory()->create();
@@ -42,10 +62,8 @@ class CreateProjectTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/projects', [
                 'name' => '',
-                'repository_url' => 'bad',
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['name', 'repository_url']);
     }
 }
-

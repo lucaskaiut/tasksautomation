@@ -41,7 +41,7 @@ class StoreProjectRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'alpha_dash', Rule::unique('projects', 'slug')],
             'description' => ['nullable', 'string', 'max:2000'],
-            'repository_url' => ['required', 'string', 'max:2048', 'url'],
+            'repository_url' => ['required', 'string', 'max:2048'],
             'default_branch' => ['nullable', 'string', 'max:255'],
             'global_rules' => ['nullable'],
             'is_active' => ['sometimes', 'boolean'],

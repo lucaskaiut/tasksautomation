@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Web\Project;
 
-use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -43,6 +42,25 @@ class CreateProjectTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_user_can_create_project_with_ssh_repository_address(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post(route('projects.store'), [
+                'name' => 'Projeto SSH',
+                'slug' => 'projeto-ssh',
+                'repository_url' => 'git@github.com:acme/repo.git',
+            ])
+            ->assertRedirect(route('projects.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('projects', [
+            'slug' => 'projeto-ssh',
+            'repository_url' => 'git@github.com:acme/repo.git',
+        ]);
+    }
+
     public function test_authenticated_user_cannot_create_project_with_invalid_data(): void
     {
         $user = User::factory()->create();
@@ -51,7 +69,6 @@ class CreateProjectTest extends TestCase
             ->from(route('projects.create'))
             ->post(route('projects.store'), [
                 'name' => '',
-                'repository_url' => 'not-a-url',
             ])
             ->assertRedirect(route('projects.create'))
             ->assertSessionHasErrors(['name', 'repository_url']);
@@ -59,4 +76,3 @@ class CreateProjectTest extends TestCase
         $this->assertDatabaseCount('projects', 0);
     }
 }
-

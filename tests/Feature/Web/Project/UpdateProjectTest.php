@@ -46,6 +46,32 @@ class UpdateProjectTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_user_can_update_project_with_ssh_repository_address(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->create([
+            'slug' => 'projeto-ssh',
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('projects.update', $project), [
+                'name' => 'Projeto Atualizado SSH',
+                'slug' => 'projeto-ssh',
+                'description' => 'Nova descrição',
+                'repository_url' => 'git@github.com:acme/new.git',
+                'default_branch' => 'main',
+                'global_rules' => '{"a":1}',
+                'is_active' => true,
+            ])
+            ->assertRedirect(route('projects.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('projects', [
+            'id' => $project->id,
+            'repository_url' => 'git@github.com:acme/new.git',
+        ]);
+    }
+
     public function test_authenticated_user_cannot_update_project_with_invalid_data(): void
     {
         $user = User::factory()->create();
@@ -56,11 +82,9 @@ class UpdateProjectTest extends TestCase
             ->put(route('projects.update', $project), [
                 'name' => '',
                 'slug' => $project->slug,
-                'repository_url' => 'bad',
                 'default_branch' => 'main',
             ])
             ->assertRedirect(route('projects.edit', $project))
             ->assertSessionHasErrors(['name', 'repository_url']);
     }
 }
-

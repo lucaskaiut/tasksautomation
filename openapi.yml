@@ -820,7 +820,6 @@ components:
           maxLength: 2000
         repository_url:
           type: string
-          format: uri
           maxLength: 2048
         default_branch:
           type:
