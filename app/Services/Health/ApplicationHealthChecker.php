@@ -4,6 +4,7 @@ namespace App\Services\Health;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
@@ -246,16 +247,47 @@ class ApplicationHealthChecker
             'welcome',
             'auth.login',
         ];
+        $compiledViewsPath = storage_path('framework/views');
 
         try {
             foreach ($requiredViews as $viewName) {
-                View::make($viewName)->render();
+                if (! View::exists($viewName)) {
+                    return [
+                        'status' => 'fail',
+                        'latency_ms' => $this->elapsedMs($start),
+                        'message' => "Required view [{$viewName}] is not registered.",
+                    ];
+                }
+
+                /** @var string $viewPath */
+                $viewPath = View::getFinder()->find($viewName);
+
+                app('blade.compiler')->compileString(File::get($viewPath));
+            }
+
+            if (! is_dir($compiledViewsPath)) {
+                return [
+                    'status' => 'fail',
+                    'latency_ms' => $this->elapsedMs($start),
+                    'message' => "Compiled views directory [{$compiledViewsPath}] does not exist.",
+                    'path' => $compiledViewsPath,
+                ];
+            }
+
+            if (! is_writable($compiledViewsPath)) {
+                return [
+                    'status' => 'fail',
+                    'latency_ms' => $this->elapsedMs($start),
+                    'message' => "Compiled views directory [{$compiledViewsPath}] is not writable.",
+                    'path' => $compiledViewsPath,
+                ];
             }
 
             return [
                 'status' => 'pass',
                 'latency_ms' => $this->elapsedMs($start),
                 'views' => $requiredViews,
+                'compiled_views_path' => $compiledViewsPath,
             ];
         } catch (Throwable $exception) {
             $this->reportSafely($exception);
