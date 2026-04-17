@@ -29,8 +29,8 @@
 
     <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
-            <x-input-label for="repository_url" value="URL do repositório" />
-            <x-text-input id="repository_url" name="repository_url" type="url" class="mt-1 block w-full" :value="old('repository_url', $project->repository_url ?? '')" required />
+            <x-input-label for="repository_url" value="Endereço do repositório" />
+            <x-text-input id="repository_url" name="repository_url" type="text" class="mt-1 block w-full" :value="old('repository_url', $project->repository_url ?? '')" required />
             <x-input-error class="mt-2" :messages="$errors->get('repository_url')" />
         </div>
 
@@ -60,4 +60,3 @@
         <x-input-error class="mt-2" :messages="$errors->get('is_active')" />
     </div>
 </div>
-
