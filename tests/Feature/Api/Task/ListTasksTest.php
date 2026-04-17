@@ -27,6 +27,7 @@ class ListTasksTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/tasks')
             ->assertOk()
+            ->assertJsonPath('data.0.implementation_type', fn ($value) => in_array($value, ['feature', 'fix'], true))
             ->assertJsonStructure([
                 'data',
                 'links',
@@ -35,4 +36,3 @@ class ListTasksTest extends TestCase
             ]);
     }
 }
-

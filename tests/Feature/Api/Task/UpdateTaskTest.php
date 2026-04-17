@@ -32,14 +32,17 @@ class UpdateTaskTest extends TestCase
                 'constraints' => null,
                 'status' => 'pending',
                 'priority' => 'high',
+                'implementation_type' => 'fix',
             ])
             ->assertOk()
-            ->assertJsonPath('data.title', 'Updated title');
+            ->assertJsonPath('data.title', 'Updated title')
+            ->assertJsonPath('data.implementation_type', 'fix');
 
         $this->assertDatabaseHas('tasks', [
             'id' => $task->id,
             'title' => 'Updated title',
             'priority' => 'high',
+            'implementation_type' => 'fix',
         ]);
     }
 
@@ -58,7 +61,6 @@ class UpdateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['title', 'description', 'priority']);
+            ->assertJsonValidationErrors(['title', 'description', 'priority', 'implementation_type']);
     }
 }
-

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\Enums\TaskImplementationType;
 use App\Support\Enums\TaskPriority;
 use App\Support\Enums\TaskReviewStatus;
 use App\Support\Enums\TaskStatus;
 use Database\Factories\TaskFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'constraints',
     'status',
     'priority',
+    'implementation_type',
     'claimed_by_worker',
     'claimed_at',
     'started_at',
@@ -101,6 +103,7 @@ class Task extends Model
         return [
             'status' => TaskStatus::class,
             'priority' => TaskPriority::class,
+            'implementation_type' => TaskImplementationType::class,
             'claimed_at' => 'datetime',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',

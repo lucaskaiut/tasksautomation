@@ -32,15 +32,18 @@ class CreateTaskTest extends TestCase
                 'constraints' => null,
                 'status' => 'pending',
                 'priority' => 'low',
+                'implementation_type' => 'feature',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.title', 'API Task');
+            ->assertJsonPath('data.title', 'API Task')
+            ->assertJsonPath('data.implementation_type', 'feature');
 
         $this->assertDatabaseHas('tasks', [
             'project_id' => $project->id,
             'environment_profile_id' => $profile->id,
             'created_by' => $user->id,
             'title' => 'API Task',
+            'implementation_type' => 'feature',
         ]);
     }
 
@@ -57,7 +60,7 @@ class CreateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['project_id', 'title', 'description', 'priority']);
+            ->assertJsonValidationErrors(['project_id', 'title', 'description', 'priority', 'implementation_type']);
     }
 
     public function test_environment_profile_must_belong_to_same_project(): void
@@ -79,9 +82,9 @@ class CreateTaskTest extends TestCase
                 'title' => 'Task',
                 'description' => 'Desc',
                 'priority' => 'medium',
+                'implementation_type' => 'fix',
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['environment_profile_id']);
     }
 }
-

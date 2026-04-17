@@ -2,6 +2,7 @@
 
 namespace App\Support\DTOs;
 
+use App\Support\Enums\TaskImplementationType;
 use App\Support\Enums\TaskPriority;
 use App\Support\Enums\TaskStatus;
 
@@ -16,11 +17,11 @@ final readonly class TaskData
         public ?string $constraints,
         public TaskStatus $status,
         public TaskPriority $priority,
-    ) {
-    }
+        public TaskImplementationType $implementationType,
+    ) {}
 
     /**
-     * @param array<string,mixed> $validated
+     * @param  array<string,mixed>  $validated
      */
     public static function fromValidated(array $validated): self
     {
@@ -35,7 +36,7 @@ final readonly class TaskData
             constraints: $validated['constraints'] ?? null,
             status: TaskStatus::from($validated['status'] ?? TaskStatus::Pending->value),
             priority: TaskPriority::from($validated['priority']),
+            implementationType: TaskImplementationType::from($validated['implementation_type']),
         );
     }
 }
-

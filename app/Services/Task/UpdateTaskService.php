@@ -22,6 +22,7 @@ final class UpdateTaskService
             'constraints' => $data->constraints,
             'status' => $data->status,
             'priority' => $data->priority,
+            'implementation_type' => $data->implementationType,
         ]);
 
         $task->save();
@@ -43,4 +44,3 @@ final class UpdateTaskService
         }
     }
 }
-

@@ -3,6 +3,7 @@
     $selectedEnvironmentProfileId = old('environment_profile_id', $task->environment_profile_id ?? '');
     $selectedStatus = old('status', $task->status->value ?? \App\Support\Enums\TaskStatus::Pending->value);
     $selectedPriority = old('priority', $task->priority->value ?? \App\Support\Enums\TaskPriority::Medium->value);
+    $selectedImplementationType = old('implementation_type', $task->implementation_type?->value ?? \App\Support\Enums\TaskImplementationType::Feature->value);
 @endphp
 
 <div class="space-y-6">
@@ -69,6 +70,20 @@
                 @endforeach
             </select>
             <x-input-error class="mt-2" :messages="$errors->get('priority')" />
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div>
+            <x-input-label for="implementation_type" value="Tipo de implementação" />
+            <select id="implementation_type" name="implementation_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                @foreach (\App\Support\Enums\TaskImplementationType::cases() as $case)
+                    <option value="{{ $case->value }}" @selected($selectedImplementationType === $case->value)>
+                        {{ $case->value }}
+                    </option>
+                @endforeach
+            </select>
+            <x-input-error class="mt-2" :messages="$errors->get('implementation_type')" />
         </div>
     </div>
 
@@ -174,4 +189,3 @@
         </div>
     @endisset
 </div>
-

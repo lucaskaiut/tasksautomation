@@ -4,7 +4,6 @@ namespace Tests\Feature\Web\Task;
 
 use App\Models\Project;
 use App\Models\ProjectEnvironmentProfile;
-use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -37,6 +36,7 @@ class CreateTaskTest extends TestCase
                 'constraints' => 'Restrições',
                 'status' => 'pending',
                 'priority' => 'medium',
+                'implementation_type' => 'feature',
             ])
             ->assertRedirect(route('tasks.index'))
             ->assertSessionHas('success');
@@ -46,6 +46,7 @@ class CreateTaskTest extends TestCase
             'environment_profile_id' => $profile->id,
             'created_by' => $user->id,
             'title' => 'Minha tarefa',
+            'implementation_type' => 'feature',
         ]);
     }
 
@@ -63,7 +64,7 @@ class CreateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertRedirect(route('tasks.create'))
-            ->assertSessionHasErrors(['title', 'description', 'priority']);
+            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type']);
 
         $this->assertDatabaseCount('tasks', 0);
     }
@@ -86,6 +87,7 @@ class CreateTaskTest extends TestCase
                 'title' => 'Tarefa',
                 'description' => 'Descrição',
                 'priority' => 'low',
+                'implementation_type' => 'fix',
             ])
             ->assertRedirect(route('tasks.create'))
             ->assertSessionHasErrors(['environment_profile_id']);
@@ -93,4 +95,3 @@ class CreateTaskTest extends TestCase
         $this->assertDatabaseCount('tasks', 0);
     }
 }
-

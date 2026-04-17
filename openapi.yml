@@ -311,6 +311,7 @@ paths:
                   constraints: Não alterar contratos públicos da API.
                   status: pending
                   priority: high
+                  implementation_type: fix
       responses:
         '201':
           description: Tarefa criada com sucesso.
@@ -833,7 +834,7 @@ components:
           default: true
     TaskWriteRequest:
       type: object
-      required: [project_id, title, description, priority]
+      required: [project_id, title, description, priority, implementation_type]
       properties:
         project_id:
           type: integer
@@ -864,6 +865,9 @@ components:
         priority:
           type: string
           enum: [low, medium, high]
+        implementation_type:
+          type: string
+          enum: [feature, fix]
     ClaimTaskRequest:
       allOf:
         - $ref: '#/components/schemas/WorkerTaskRequest'
@@ -1099,6 +1103,9 @@ components:
         status:
           type: string
           enum: [draft, pending, claimed, running, review, needs_adjustment, done, failed, blocked, cancelled]
+        implementation_type:
+          type: string
+          enum: [feature, fix]
         review_status:
           type:
             - string

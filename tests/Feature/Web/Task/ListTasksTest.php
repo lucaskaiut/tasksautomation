@@ -20,12 +20,14 @@ class ListTasksTest extends TestCase
     public function test_authenticated_user_can_access_tasks_index(): void
     {
         $user = User::factory()->create();
-        $task = Task::factory()->create();
+        $task = Task::factory()->create([
+            'implementation_type' => 'fix',
+        ]);
 
         $this->actingAs($user)
             ->get(route('tasks.index'))
             ->assertOk()
-            ->assertSee($task->title);
+            ->assertSee($task->title)
+            ->assertSee('fix');
     }
 }
-

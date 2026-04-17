@@ -43,7 +43,8 @@ class ClaimTaskTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('data.id', $task->id)
-            ->assertJsonPath('data.claimed_by_worker', 'worker-local-01');
+            ->assertJsonPath('data.claimed_by_worker', 'worker-local-01')
+            ->assertJsonPath('data.implementation_type', $task->implementation_type->value);
 
         $this->assertDatabaseHas('tasks', [
             'id' => $task->id,
@@ -268,4 +269,3 @@ class ClaimTaskTest extends TestCase
         );
     }
 }
-

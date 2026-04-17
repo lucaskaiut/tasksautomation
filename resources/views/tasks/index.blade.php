@@ -22,6 +22,7 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Título</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Projeto</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Implementação</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Revisão</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ajustes</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Última revisão</th>
@@ -38,6 +39,11 @@
                             <td class="px-4 py-3 text-sm font-medium text-slate-950">{{ $task->title }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->project?->name }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->status->value }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-600">
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                                    {{ $task->implementation_type->value }}
+                                </span>
+                            </td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->review_status?->value ?? '—' }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->revision_count }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">
@@ -78,7 +84,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="px-4 py-10 text-center text-sm text-slate-500">
+                            <td colspan="12" class="px-4 py-10 text-center text-sm text-slate-500">
                                 Nenhuma tarefa cadastrada.
                             </td>
                         </tr>

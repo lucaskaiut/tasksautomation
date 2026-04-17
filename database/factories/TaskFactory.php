@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Enums\TaskImplementationType;
 use App\Support\Enums\TaskPriority;
 use App\Support\Enums\TaskStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -42,6 +43,7 @@ class TaskFactory extends Factory
             'constraints' => $this->faker->optional()->paragraph(),
             'status' => TaskStatus::Pending->value,
             'priority' => $this->faker->randomElement(array_column(TaskPriority::cases(), 'value')),
+            'implementation_type' => $this->faker->randomElement(array_column(TaskImplementationType::cases(), 'value')),
             'review_status' => null,
             'revision_count' => 0,
             'last_reviewed_at' => null,

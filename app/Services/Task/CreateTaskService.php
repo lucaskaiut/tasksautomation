@@ -24,6 +24,7 @@ final class CreateTaskService
             'constraints' => $data->constraints,
             'status' => $data->status,
             'priority' => $data->priority,
+            'implementation_type' => $data->implementationType,
         ]);
     }
 
@@ -41,4 +42,3 @@ final class CreateTaskService
         }
     }
 }
-

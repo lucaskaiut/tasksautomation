@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Task
+ * @mixin Task
  */
 class TaskResource extends JsonResource
 {
@@ -38,6 +39,7 @@ class TaskResource extends JsonResource
             'deliverables' => $this->deliverables,
             'constraints' => $this->constraints,
             'status' => $this->status?->value ?? (string) $this->status,
+            'implementation_type' => $this->implementation_type?->value ?? (string) $this->implementation_type,
             'review_status' => $this->review_status?->value ?? (string) $this->review_status,
             'revision_count' => $this->revision_count,
             'last_reviewed_at' => $this->last_reviewed_at,

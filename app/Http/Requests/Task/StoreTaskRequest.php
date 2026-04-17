@@ -4,6 +4,7 @@ namespace App\Http\Requests\Task;
 
 use App\Models\Task;
 use App\Support\DTOs\TaskData;
+use App\Support\Enums\TaskImplementationType;
 use App\Support\Enums\TaskPriority;
 use App\Support\Enums\TaskStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -36,6 +37,7 @@ class StoreTaskRequest extends FormRequest
             'constraints' => ['nullable', 'string'],
             'status' => ['nullable', 'string', Rule::in(array_column(TaskStatus::cases(), 'value'))],
             'priority' => ['required', 'string', Rule::in(array_column(TaskPriority::cases(), 'value'))],
+            'implementation_type' => ['required', 'string', Rule::in(array_column(TaskImplementationType::cases(), 'value'))],
         ];
     }
 
