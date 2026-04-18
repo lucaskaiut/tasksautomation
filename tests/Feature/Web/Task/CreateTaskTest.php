@@ -68,6 +68,47 @@ class CreateTaskTest extends TestCase
             ->assertSee('Precisa de ajustes');
     }
 
+    public function test_create_form_exposes_environment_profiles_for_selected_project_filtering(): void
+    {
+        $user = User::factory()->create();
+        $projectA = Project::factory()->create(['name' => 'Projeto Alpha']);
+        $projectB = Project::factory()->create(['name' => 'Projeto Beta']);
+        $profileA = ProjectEnvironmentProfile::factory()->create([
+            'project_id' => $projectA->id,
+            'name' => 'Alpha Full',
+            'slug' => 'alpha-full',
+        ]);
+        $profileB = ProjectEnvironmentProfile::factory()->create([
+            'project_id' => $projectB->id,
+            'name' => 'Beta Light',
+            'slug' => 'beta-light',
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('tasks.create'))
+            ->post(route('tasks.store'), [
+                'project_id' => $projectA->id,
+                'environment_profile_id' => $profileA->id,
+                'title' => '',
+                'description' => '',
+                'priority' => 'invalid',
+            ])
+            ->assertRedirect(route('tasks.create'))
+            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type']);
+
+        $this->actingAs($user)
+            ->get(route('tasks.create'))
+            ->assertOk()
+            ->assertSee('x-model="selectedProjectId"', false)
+            ->assertSee('x-model="selectedEnvironmentProfileId"', false)
+            ->assertSee('"project_id":'.$projectA->id, false)
+            ->assertSee('"project_id":'.$projectB->id, false)
+            ->assertSee('"name":"Alpha Full"', false)
+            ->assertSee('"name":"Beta Light"', false)
+            ->assertSee('"slug":"alpha-full"', false)
+            ->assertSee('"slug":"beta-light"', false);
+    }
+
     public function test_authenticated_user_cannot_create_task_with_invalid_data(): void
     {
         $user = User::factory()->create();

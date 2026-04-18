@@ -60,6 +60,40 @@ class UpdateTaskTest extends TestCase
         ]);
     }
 
+    public function test_edit_form_exposes_environment_profiles_and_keeps_current_selection_available(): void
+    {
+        $user = User::factory()->create();
+        $projectA = Project::factory()->create(['name' => 'Projeto Alpha']);
+        $projectB = Project::factory()->create(['name' => 'Projeto Beta']);
+        $profileA = ProjectEnvironmentProfile::factory()->create([
+            'project_id' => $projectA->id,
+            'name' => 'Alpha Full',
+            'slug' => 'alpha-full',
+        ]);
+        $profileB = ProjectEnvironmentProfile::factory()->create([
+            'project_id' => $projectB->id,
+            'name' => 'Beta Light',
+            'slug' => 'beta-light',
+        ]);
+        $task = Task::factory()->create([
+            'project_id' => $projectA->id,
+            'environment_profile_id' => $profileA->id,
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('tasks.edit', $task))
+            ->assertOk()
+            ->assertSee('x-model="selectedProjectId"', false)
+            ->assertSee('x-model="selectedEnvironmentProfileId"', false)
+            ->assertSee('selectedProjectId: "'.$projectA->id.'"', false)
+            ->assertSee('selectedEnvironmentProfileId: "'.$profileA->id.'"', false)
+            ->assertSee('"project_id":'.$projectA->id, false)
+            ->assertSee('"project_id":'.$projectB->id, false)
+            ->assertSee('"name":"Alpha Full"', false)
+            ->assertSee('"name":"Beta Light"', false);
+    }
+
     public function test_authenticated_user_cannot_update_task_with_invalid_data(): void
     {
         $user = User::factory()->create();
