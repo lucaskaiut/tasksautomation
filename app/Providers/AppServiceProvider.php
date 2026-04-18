@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Task;
 use App\Models\TaskExecution;
+use App\Observers\TaskObserver;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Task::observe(TaskObserver::class);
+
         Route::bind('taskExecution', function (string $value, $route) {
             $task = $route->parameter('task');
             if ($task instanceof Task) {

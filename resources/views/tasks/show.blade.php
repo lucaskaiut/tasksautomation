@@ -37,14 +37,14 @@
                 </div>
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Revisão funcional</dt>
-                    <dd class="mt-1 text-sm font-medium text-slate-950" data-task-field="review-status">{{ $task->review_status?->value ?? '—' }}</dd>
-                        @if ($reviewStatusPresentation)
-                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $reviewStatusPresentation['badge_classes'] }}">
-                                {{ $reviewStatusPresentation['label'] }}
-                            </span>
-                        @else
-                            <span class="text-sm font-medium text-slate-950">—</span>
-                        @endif
+                    <dd class="mt-1">
+                        <span
+                            data-task-field="review-status-badge"
+                            data-base-class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                            class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $reviewStatusPresentation['badge_classes'] ?? 'bg-slate-100 text-slate-700' }}"
+                        >
+                            <span data-task-field="review-status-label">{{ $reviewStatusPresentation['label'] ?? '—' }}</span>
+                        </span>
                     </dd>
                 </div>
                 <div>
@@ -76,18 +76,28 @@
             <div class="mt-6 space-y-3 text-sm text-slate-800">
                 <div>
                     <h4 class="font-semibold text-slate-950">Descrição</h4>
-                    <p class="mt-1 whitespace-pre-wrap">{{ $task->description }}</p>
+                    <p class="mt-1 whitespace-pre-wrap" data-task-field="description">{{ $task->description }}</p>
                 </div>
                 @if ($task->deliverables)
-                    <div>
+                    <div data-task-optional="deliverables">
                         <h4 class="font-semibold text-slate-950">Entregáveis</h4>
-                        <p class="mt-1 whitespace-pre-wrap">{{ $task->deliverables }}</p>
+                        <p class="mt-1 whitespace-pre-wrap" data-task-field="deliverables">{{ $task->deliverables }}</p>
+                    </div>
+                @else
+                    <div data-task-optional="deliverables" class="hidden">
+                        <h4 class="font-semibold text-slate-950">Entregáveis</h4>
+                        <p class="mt-1 whitespace-pre-wrap" data-task-field="deliverables"></p>
                     </div>
                 @endif
                 @if ($task->constraints)
-                    <div>
+                    <div data-task-optional="constraints">
                         <h4 class="font-semibold text-slate-950">Restrições</h4>
-                        <p class="mt-1 whitespace-pre-wrap">{{ $task->constraints }}</p>
+                        <p class="mt-1 whitespace-pre-wrap" data-task-field="constraints">{{ $task->constraints }}</p>
+                    </div>
+                @else
+                    <div data-task-optional="constraints" class="hidden">
+                        <h4 class="font-semibold text-slate-950">Restrições</h4>
+                        <p class="mt-1 whitespace-pre-wrap" data-task-field="constraints"></p>
                     </div>
                 @endif
             </div>

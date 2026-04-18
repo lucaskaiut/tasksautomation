@@ -15,7 +15,7 @@
 
 @section('content')
     <script type="application/json" id="task-stream-config">@json($realtimeConfig)</script>
-    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm" data-task-list>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200">
                 <thead class="bg-slate-50">
@@ -34,7 +34,7 @@
                         <th class="px-4 py-3"></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200 bg-white">
+                <tbody class="divide-y divide-slate-200 bg-white" data-task-list-body>
                     @forelse ($tasks as $task)
                         @php($statusPresentation = $statusPresentations[$task->status->value] ?? ['label' => $task->status->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
                         @php($reviewStatusPresentation = $task->review_status ? ($reviewStatusPresentations[$task->review_status->value] ?? ['label' => $task->review_status->value, 'badge_classes' => 'bg-slate-100 text-slate-700']) : null)

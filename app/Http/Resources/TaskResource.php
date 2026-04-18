@@ -44,6 +44,12 @@ class TaskResource extends JsonResource
             'revision_count' => $this->revision_count,
             'last_reviewed_at' => $this->last_reviewed_at,
             'last_reviewed_by' => $this->last_reviewed_by,
+            'creator' => $this->whenLoaded('creator', function () {
+                return [
+                    'id' => $this->creator->id,
+                    'name' => $this->creator->name,
+                ];
+            }),
             'last_reviewer' => $this->whenLoaded('lastReviewer', function () {
                 return [
                     'id' => $this->lastReviewer->id,

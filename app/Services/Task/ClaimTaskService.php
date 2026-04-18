@@ -4,7 +4,6 @@ namespace App\Services\Task;
 
 use App\Models\Task;
 use App\Models\TaskExecution;
-use App\Services\Realtime\TaskStatusStreamPublisher;
 use App\Support\Enums\TaskExecutionStatus;
 use App\Support\Enums\TaskStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,16 +11,9 @@ use Illuminate\Support\Facades\DB;
 
 final class ClaimTaskService
 {
-    public function __construct(
-        private readonly TaskStatusStreamPublisher $taskStatusStreamPublisher,
-    ) {
-    }
-
     public function handle(string $workerId): ?Task
     {
-        $previousStatus = null;
-
-        $task = DB::transaction(function () use ($workerId, &$previousStatus): ?Task {
+        return DB::transaction(function () use ($workerId): ?Task {
             /** @var Task|null $task */
             $task = Task::query()
                 ->eligibleForClaim()
@@ -44,7 +36,6 @@ final class ClaimTaskService
                 return null;
             }
 
-            $previousStatus = $task->status?->value ?? (string) $task->status;
             $now = now();
 
             $task->forceFill([
@@ -65,11 +56,5 @@ final class ClaimTaskService
 
             return $task->refresh();
         });
-
-        if ($task !== null) {
-            $this->taskStatusStreamPublisher->publishStatusChange($task, $previousStatus);
-        }
-
-        return $task;
     }
 }

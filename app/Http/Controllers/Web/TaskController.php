@@ -9,12 +9,12 @@ use App\Models\Project;
 use App\Models\ProjectEnvironmentProfile;
 use App\Models\Task;
 use App\Models\TaskExecution;
-use App\Support\Enums\TaskReviewStatus;
-use App\Support\Enums\TaskExecutionStatus;
-use App\Support\Realtime\TaskRealtimeTokenService;
-use App\Support\TaskStatusPresenter;
 use App\Services\Task\CreateTaskService;
 use App\Services\Task\UpdateTaskService;
+use App\Support\Enums\TaskExecutionStatus;
+use App\Support\Enums\TaskReviewStatus;
+use App\Support\Realtime\TaskRealtimeTokenService;
+use App\Support\TaskStatusPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -23,8 +23,7 @@ class TaskController extends Controller
     public function __construct(
         private readonly TaskStatusPresenter $taskStatusPresenter,
         private readonly TaskRealtimeTokenService $taskRealtimeTokenService,
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -41,8 +40,9 @@ class TaskController extends Controller
         $statusPresentations = $this->taskStatusPresenter->presentations();
         $realtimeConfig = $this->realtimeConfig(
             subscriptions: [[
-                'scope' => 'list',
-                'task_ids' => $tasks->getCollection()->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+                'scope' => 'index',
+                'page' => $tasks->currentPage(),
+                'per_page' => $tasks->perPage(),
             ]],
         );
 
@@ -158,6 +158,12 @@ class TaskController extends Controller
             'token' => $this->taskRealtimeTokenService->issue(auth()->user()),
             'subscriptions' => $subscriptions,
             'statusPresentations' => $this->taskStatusPresenter->presentations(),
+            'reviewStatusPresentations' => $this->taskReviewStatusPresentations(),
+            'routes' => [
+                'index' => route('tasks.index'),
+                'show' => route('tasks.show', ['task' => '__TASK__']),
+                'edit' => route('tasks.edit', ['task' => '__TASK__']),
+            ],
         ];
     }
 

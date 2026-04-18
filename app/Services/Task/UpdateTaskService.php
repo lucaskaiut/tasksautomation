@@ -4,21 +4,14 @@ namespace App\Services\Task;
 
 use App\Models\ProjectEnvironmentProfile;
 use App\Models\Task;
-use App\Services\Realtime\TaskStatusStreamPublisher;
 use App\Support\DTOs\TaskData;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateTaskService
 {
-    public function __construct(
-        private readonly TaskStatusStreamPublisher $taskStatusStreamPublisher,
-    ) {
-    }
-
     public function handle(Task $task, TaskData $data): Task
     {
         $this->assertEnvironmentProfileBelongsToProject($data->projectId, $data->environmentProfileId);
-        $previousStatus = $task->status?->value ?? (string) $task->status;
 
         $task->fill([
             'project_id' => $data->projectId,
@@ -34,13 +27,7 @@ final class UpdateTaskService
 
         $task->save();
 
-        $task = $task->refresh();
-
-        if (($task->status?->value ?? (string) $task->status) !== $previousStatus) {
-            $this->taskStatusStreamPublisher->publishStatusChange($task, $previousStatus);
-        }
-
-        return $task;
+        return $task->refresh();
     }
 
     private function assertEnvironmentProfileBelongsToProject(int $projectId, ?int $environmentProfileId): void

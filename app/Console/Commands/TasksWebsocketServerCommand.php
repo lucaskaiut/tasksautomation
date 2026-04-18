@@ -7,7 +7,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Policies\TaskPolicy;
 use App\Support\Realtime\TaskRealtimeTokenService;
-use App\Support\Realtime\TaskStatusPayloadFactory;
+use App\Support\Realtime\TaskStreamPayloadFactory;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -30,7 +30,7 @@ class TasksWebsocketServerCommand extends Command
 
     public function __construct(
         private readonly TaskRealtimeTokenService $taskRealtimeTokenService,
-        private readonly TaskStatusPayloadFactory $taskStatusPayloadFactory,
+        private readonly TaskStreamPayloadFactory $taskStreamPayloadFactory,
         private readonly TaskPolicy $taskPolicy,
     ) {
         parent::__construct();
@@ -320,19 +320,14 @@ class TasksWebsocketServerCommand extends Command
     {
         $taskId = (int) ($message['task_id'] ?? 0);
 
-        if ($taskId <= 0) {
-            return false;
-        }
-
-        $task = Task::query()->find($taskId);
-
-        if (! $task instanceof Task || ! $this->taskPolicy->view($user, $task)) {
+        if ($taskId <= 0 || ! $this->userCanReceiveMessage($user, $message)) {
             return false;
         }
 
         return match ($subscription['scope']) {
             'task' => (int) $subscription['task_id'] === $taskId,
             'list' => in_array($taskId, $subscription['task_ids'], true),
+            'index' => true,
             'project' => (int) $subscription['project_id'] === (int) $message['project_id'],
             default => false,
         };
@@ -387,6 +382,18 @@ class TasksWebsocketServerCommand extends Command
             ];
         }
 
+        if ($scope === 'index') {
+            if (! $this->taskPolicy->viewAny($user)) {
+                return null;
+            }
+
+            return [
+                'scope' => 'index',
+                'page' => max(1, (int) ($subscription['page'] ?? 1)),
+                'per_page' => min(100, max(1, (int) ($subscription['per_page'] ?? 20))),
+            ];
+        }
+
         if ($scope === 'project') {
             if (! $this->taskPolicy->viewAny($user)) {
                 return null;
@@ -413,22 +420,37 @@ class TasksWebsocketServerCommand extends Command
      */
     private function snapshotsForSubscription(array $subscription): array
     {
-        $query = Task::query()->with(['project', 'environmentProfile', 'lastReviewer']);
+        $query = Task::query()->with(['project', 'environmentProfile', 'lastReviewer', 'creator']);
 
         match ($subscription['scope']) {
             'task' => $query->whereKey($subscription['task_id']),
             'list' => $query->whereIn('id', $subscription['task_ids']),
+            'index' => $query->latest()->forPage($subscription['page'], $subscription['per_page']),
             'project' => $query->where('project_id', $subscription['project_id']),
             default => null,
         };
 
         return $query->get()
-            ->map(fn (Task $task): array => $this->taskStatusPayloadFactory->make(
+            ->map(fn (Task $task): array => $this->taskStreamPayloadFactory->make(
+                type: 'task.snapshot',
                 task: $task,
-                previousStatus: $task->status?->value ?? (string) $task->status,
-                changedAt: $task->updated_at ?? Carbon::now(),
+                occurredAt: $task->updated_at ?? Carbon::now(),
             ))
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $message
+     */
+    private function userCanReceiveMessage(User $user, array $message): bool
+    {
+        if (($message['type'] ?? null) === 'task.deleted') {
+            return $this->taskPolicy->viewAny($user);
+        }
+
+        $task = Task::query()->find((int) ($message['task_id'] ?? 0));
+
+        return $task instanceof Task && $this->taskPolicy->view($user, $task);
     }
 
     /**

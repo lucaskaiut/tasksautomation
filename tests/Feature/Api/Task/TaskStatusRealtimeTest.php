@@ -6,21 +6,49 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskExecution;
 use App\Models\User;
-use App\Services\Realtime\TaskStatusStreamPublisher;
+use App\Services\Realtime\TaskStreamPublisher;
 use App\Support\Enums\TaskExecutionStatus;
 use App\Support\Enums\TaskPriority;
-use App\Support\Enums\TaskReviewDecision;
-use App\Support\Enums\TaskReviewStatus;
 use App\Support\Enums\TaskStatus;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
 class TaskStatusRealtimeTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
-    public function test_claim_publishes_status_change_event(): void
+    public function test_creating_task_publishes_created_event(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->create();
+
+        $this->mock(TaskStreamPublisher::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('publish')
+                ->once()
+                ->withArgs(function (array $payload): bool {
+                    return $payload['type'] === 'task.created'
+                        && ($payload['task']['title'] ?? null) === 'Tarefa criada'
+                        && ($payload['task']['status'] ?? null) === TaskStatus::Pending->value;
+                });
+        });
+
+        $this->actingAs($user)
+            ->post(route('tasks.store'), [
+                'project_id' => $project->id,
+                'environment_profile_id' => null,
+                'title' => 'Tarefa criada',
+                'description' => 'Descrição criada',
+                'deliverables' => null,
+                'constraints' => null,
+                'status' => TaskStatus::Pending->value,
+                'priority' => TaskPriority::Medium->value,
+                'implementation_type' => 'feature',
+            ])
+            ->assertRedirect(route('tasks.index'));
+    }
+
+    public function test_claim_publishes_updated_event_without_service_level_hook(): void
     {
         $user = User::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
@@ -32,11 +60,14 @@ class TaskStatusRealtimeTest extends TestCase
             'priority' => TaskPriority::Medium,
         ]);
 
-        $this->mock(TaskStatusStreamPublisher::class, function (MockInterface $mock) use ($task): void {
-            $mock->shouldReceive('publishStatusChange')
+        $this->mock(TaskStreamPublisher::class, function (MockInterface $mock) use ($task): void {
+            $mock->shouldReceive('publish')
                 ->once()
-                ->withArgs(function (Task $publishedTask, ?string $previousStatus) use ($task): bool {
-                    return $publishedTask->is($task) && $previousStatus === TaskStatus::Pending->value;
+                ->withArgs(function (array $payload) use ($task): bool {
+                    return $payload['type'] === 'task.updated'
+                        && (int) $payload['task_id'] === $task->id
+                        && ($payload['changes']['status']['from'] ?? null) === TaskStatus::Pending->value
+                        && ($payload['changes']['status']['to'] ?? null) === TaskStatus::Claimed->value;
                 });
         });
 
@@ -47,7 +78,7 @@ class TaskStatusRealtimeTest extends TestCase
             ->assertOk();
     }
 
-    public function test_running_heartbeat_does_not_publish_when_status_is_unchanged(): void
+    public function test_heartbeat_publishes_generic_updated_event_for_runtime_fields(): void
     {
         $user = User::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
@@ -67,8 +98,15 @@ class TaskStatusRealtimeTest extends TestCase
             'started_at' => now(),
         ]);
 
-        $this->mock(TaskStatusStreamPublisher::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('publishStatusChange')->never();
+        $this->mock(TaskStreamPublisher::class, function (MockInterface $mock) use ($task): void {
+            $mock->shouldReceive('publish')
+                ->once()
+                ->withArgs(function (array $payload) use ($task): bool {
+                    return $payload['type'] === 'task.updated'
+                        && (int) $payload['task_id'] === $task->id
+                        && array_key_exists('last_heartbeat_at', $payload['changes'])
+                        && array_key_exists('locked_until', $payload['changes']);
+                });
         });
 
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -78,73 +116,20 @@ class TaskStatusRealtimeTest extends TestCase
             ->assertOk();
     }
 
-    public function test_update_publishes_only_when_status_changes(): void
+    public function test_deleting_task_publishes_deleted_event(): void
     {
-        $user = User::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
-        $project = Project::factory()->create();
+        $task = Task::factory()->create();
 
-        $task = Task::factory()->create([
-            'project_id' => $project->id,
-            'status' => TaskStatus::Draft,
-        ]);
-
-        $this->mock(TaskStatusStreamPublisher::class, function (MockInterface $mock) use ($task): void {
-            $mock->shouldReceive('publishStatusChange')
+        $this->mock(TaskStreamPublisher::class, function (MockInterface $mock) use ($task): void {
+            $mock->shouldReceive('publish')
                 ->once()
-                ->withArgs(function (Task $publishedTask, ?string $previousStatus) use ($task): bool {
-                    return $publishedTask->is($task) && $previousStatus === TaskStatus::Draft->value;
+                ->withArgs(function (array $payload) use ($task): bool {
+                    return $payload['type'] === 'task.deleted'
+                        && (int) $payload['task_id'] === $task->id
+                        && ($payload['task']['title'] ?? null) === $task->title;
                 });
         });
 
-        $this->withHeader('Authorization', 'Bearer '.$token)
-            ->putJson("/api/tasks/{$task->id}", [
-                'project_id' => $project->id,
-                'environment_profile_id' => null,
-                'title' => 'Atualizada',
-                'description' => 'Nova descrição',
-                'deliverables' => null,
-                'constraints' => null,
-                'status' => TaskStatus::Pending->value,
-                'priority' => 'high',
-                'implementation_type' => 'fix',
-            ])
-            ->assertOk();
-    }
-
-    public function test_review_publishes_status_change_event(): void
-    {
-        $user = User::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
-        $project = Project::factory()->create(['is_active' => true]);
-
-        $task = Task::factory()->create([
-            'project_id' => $project->id,
-            'status' => TaskStatus::Review,
-            'priority' => TaskPriority::Medium,
-            'review_status' => TaskReviewStatus::PendingReview,
-        ]);
-
-        $execution = TaskExecution::factory()->create([
-            'task_id' => $task->id,
-            'worker_id' => 'w-1',
-            'status' => TaskExecutionStatus::Review,
-            'finished_at' => now(),
-        ]);
-
-        $this->mock(TaskStatusStreamPublisher::class, function (MockInterface $mock) use ($task): void {
-            $mock->shouldReceive('publishStatusChange')
-                ->once()
-                ->withArgs(function (Task $publishedTask, ?string $previousStatus) use ($task): bool {
-                    return $publishedTask->is($task) && $previousStatus === TaskStatus::Review->value;
-                });
-        });
-
-        $this->withHeader('Authorization', 'Bearer '.$token)
-            ->postJson("/api/task-executions/{$execution->id}/reviews", [
-                'decision' => TaskReviewDecision::Approved->value,
-                'notes' => 'Aprovado.',
-            ])
-            ->assertCreated();
+        $task->delete();
     }
 }

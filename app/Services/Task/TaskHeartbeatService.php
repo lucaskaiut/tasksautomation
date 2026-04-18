@@ -4,7 +4,6 @@ namespace App\Services\Task;
 
 use App\Models\Task;
 use App\Models\TaskExecution;
-use App\Services\Realtime\TaskStatusStreamPublisher;
 use App\Support\Enums\TaskExecutionStatus;
 use App\Support\Enums\TaskStatus;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -12,19 +11,12 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class TaskHeartbeatService
 {
-    public function __construct(
-        private readonly TaskStatusStreamPublisher $taskStatusStreamPublisher,
-    ) {
-    }
-
     /**
      * @throws AuthorizationException
      * @throws ConflictHttpException
      */
     public function handle(Task $task, string $workerId): Task
     {
-        $previousStatus = $task->status?->value ?? (string) $task->status;
-
         if ($task->claimed_by_worker !== $workerId) {
             throw new AuthorizationException('Esta tarefa foi reservada por outro worker.');
         }
@@ -66,12 +58,6 @@ final class TaskHeartbeatService
 
         $task->save();
 
-        $task = $task->refresh();
-
-        if (($task->status?->value ?? (string) $task->status) !== $previousStatus) {
-            $this->taskStatusStreamPublisher->publishStatusChange($task, $previousStatus);
-        }
-
-        return $task;
+        return $task->refresh();
     }
 }
