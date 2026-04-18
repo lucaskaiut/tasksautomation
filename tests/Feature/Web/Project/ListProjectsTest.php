@@ -29,6 +29,8 @@ class ListProjectsTest extends TestCase
             ->assertSee('Projetos')
             ->assertSee('Tarefas')
             ->assertSee('Minha conta')
+            ->assertSee('py-2.5 text-sm font-semibold transition', false)
+            ->assertSee('h-9 w-9 items-center justify-center', false)
             ->assertSee($project->name);
     }
 }
