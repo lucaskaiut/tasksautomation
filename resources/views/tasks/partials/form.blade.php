@@ -51,9 +51,9 @@
         <div>
             <x-input-label for="status" value="Status" />
             <select id="status" name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                @foreach (\App\Support\Enums\TaskStatus::cases() as $case)
-                    <option value="{{ $case->value }}" @selected($selectedStatus === $case->value)>
-                        {{ $case->value }}
+                @foreach ($statusPresentations as $statusValue => $statusPresentation)
+                    <option value="{{ $statusValue }}" @selected($selectedStatus === $statusValue)>
+                        {{ $statusPresentation['label'] }}
                     </option>
                 @endforeach
             </select>

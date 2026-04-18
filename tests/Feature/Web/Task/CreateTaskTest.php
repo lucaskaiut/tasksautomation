@@ -50,6 +50,25 @@ class CreateTaskTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_user_sees_status_labels_in_portuguese_on_create_form(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->create();
+
+        ProjectEnvironmentProfile::factory()->create([
+            'project_id' => $project->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('tasks.create'))
+            ->assertOk()
+            ->assertSee('Rascunho')
+            ->assertSee('Pendente')
+            ->assertSee('Em revisão')
+            ->assertSee('Precisa de ajustes')
+            ->assertDontSee('needs_adjustment');
+    }
+
     public function test_authenticated_user_cannot_create_task_with_invalid_data(): void
     {
         $user = User::factory()->create();

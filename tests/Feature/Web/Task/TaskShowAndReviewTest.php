@@ -53,7 +53,9 @@ class TaskShowAndReviewTest extends TestCase
             ->assertSee('Voltar à lista')
             ->assertSee('Histórico de execuções')
             ->assertSee('Histórico de revisões')
-            ->assertSee('Registrar revisão funcional');
+            ->assertSee('Registrar revisão funcional')
+            ->assertSee('Em revisão')
+            ->assertSee('bg-violet-100', false);
     }
 
     public function test_user_can_approve_and_task_becomes_done(): void
