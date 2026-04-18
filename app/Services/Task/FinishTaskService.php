@@ -4,6 +4,7 @@ namespace App\Services\Task;
 
 use App\Models\Task;
 use App\Models\TaskExecution;
+use App\Services\Realtime\TaskStatusStreamPublisher;
 use App\Support\Enums\TaskExecutionStatus;
 use App\Support\Enums\TaskReviewStatus;
 use App\Support\Enums\TaskStatus;
@@ -14,6 +15,11 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class FinishTaskService
 {
+    public function __construct(
+        private readonly TaskStatusStreamPublisher $taskStatusStreamPublisher,
+    ) {
+    }
+
     /**
      * @param  array<string, mixed>|null  $metadata
      *
@@ -32,7 +38,9 @@ final class FinishTaskService
         ?string $logsPath = null,
         ?array $metadata = null,
     ): Task {
-        return DB::transaction(function () use (
+        $previousStatus = null;
+
+        $result = DB::transaction(function () use (
             $task,
             $workerId,
             $requestedStatus,
@@ -43,8 +51,10 @@ final class FinishTaskService
             $pullRequestUrl,
             $logsPath,
             $metadata,
+            &$previousStatus,
         ): Task {
             $task = Task::query()->whereKey($task->id)->lockForUpdate()->firstOrFail();
+            $previousStatus = $task->status?->value ?? (string) $task->status;
 
             if ($task->claimed_by_worker !== $workerId) {
                 throw new AuthorizationException('Esta tarefa foi reservada por outro worker.');
@@ -163,5 +173,9 @@ final class FinishTaskService
 
             throw new ConflictHttpException('Status de finalização não suportado.');
         });
+
+        $this->taskStatusStreamPublisher->publishStatusChange($result, $previousStatus);
+
+        return $result;
     }
 }

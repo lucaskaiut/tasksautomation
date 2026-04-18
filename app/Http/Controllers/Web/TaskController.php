@@ -10,7 +10,8 @@ use App\Models\ProjectEnvironmentProfile;
 use App\Models\Task;
 use App\Models\TaskExecution;
 use App\Support\Enums\TaskExecutionStatus;
-use App\Support\Enums\TaskStatus;
+use App\Support\Realtime\TaskRealtimeTokenService;
+use App\Support\TaskStatusPresenter;
 use App\Services\Task\CreateTaskService;
 use App\Services\Task\UpdateTaskService;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +19,12 @@ use Illuminate\View\View;
 
 class TaskController extends Controller
 {
+    public function __construct(
+        private readonly TaskStatusPresenter $taskStatusPresenter,
+        private readonly TaskRealtimeTokenService $taskRealtimeTokenService,
+    ) {
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -30,9 +37,15 @@ class TaskController extends Controller
             ->latest()
             ->paginate(20);
 
-        $statusPresentations = $this->taskStatusPresentations();
+        $statusPresentations = $this->taskStatusPresenter->presentations();
+        $realtimeConfig = $this->realtimeConfig(
+            subscriptions: [[
+                'scope' => 'list',
+                'task_ids' => $tasks->getCollection()->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+            ]],
+        );
 
-        return view('tasks.index', compact('tasks', 'statusPresentations'));
+        return view('tasks.index', compact('tasks', 'statusPresentations', 'realtimeConfig'));
     }
 
     public function show(Task $task): View
@@ -56,9 +69,15 @@ class TaskController extends Controller
             ->orderByDesc('id')
             ->first();
 
-        $statusPresentations = $this->taskStatusPresentations();
+        $statusPresentations = $this->taskStatusPresenter->presentations();
+        $realtimeConfig = $this->realtimeConfig(
+            subscriptions: [[
+                'scope' => 'task',
+                'task_id' => $task->id,
+            ]],
+        );
 
-        return view('tasks.show', compact('task', 'reviewableExecution', 'statusPresentations'));
+        return view('tasks.show', compact('task', 'reviewableExecution', 'statusPresentations', 'realtimeConfig'));
     }
 
     /**
@@ -75,7 +94,7 @@ class TaskController extends Controller
             ->orderBy('name')
             ->get();
 
-        $statusPresentations = $this->taskStatusPresentations();
+        $statusPresentations = $this->taskStatusPresenter->presentations();
 
         return view('tasks.create', compact('projects', 'environmentProfiles', 'statusPresentations'));
     }
@@ -106,7 +125,7 @@ class TaskController extends Controller
             ->orderBy('name')
             ->get();
 
-        $statusPresentations = $this->taskStatusPresentations();
+        $statusPresentations = $this->taskStatusPresenter->presentations();
 
         return view('tasks.edit', compact('task', 'projects', 'environmentProfiles', 'statusPresentations'));
     }
@@ -124,49 +143,16 @@ class TaskController extends Controller
     }
 
     /**
-     * @return array<string, array{label: string, badge_classes: string}>
+     * @param  array<int, array<string, mixed>>  $subscriptions
+     * @return array<string, mixed>
      */
-    private function taskStatusPresentations(): array
+    private function realtimeConfig(array $subscriptions): array
     {
-        return collect(TaskStatus::cases())
-            ->mapWithKeys(fn (TaskStatus $status): array => [
-                $status->value => [
-                    'label' => $this->taskStatusLabel($status),
-                    'badge_classes' => $this->taskStatusBadgeClasses($status),
-                ],
-            ])
-            ->all();
-    }
-
-    private function taskStatusLabel(TaskStatus $status): string
-    {
-        return match ($status) {
-            TaskStatus::Draft => 'Rascunho',
-            TaskStatus::Pending => 'Pendente',
-            TaskStatus::Claimed => 'Em fila',
-            TaskStatus::Running => 'Em andamento',
-            TaskStatus::Review => 'Em revisão',
-            TaskStatus::NeedsAdjustment => 'Precisa de ajustes',
-            TaskStatus::Done => 'Concluída',
-            TaskStatus::Failed => 'Falhou',
-            TaskStatus::Blocked => 'Bloqueada',
-            TaskStatus::Cancelled => 'Cancelada',
-        };
-    }
-
-    private function taskStatusBadgeClasses(TaskStatus $status): string
-    {
-        return match ($status) {
-            TaskStatus::Draft => 'bg-slate-100 text-slate-700',
-            TaskStatus::Pending => 'bg-amber-100 text-amber-800',
-            TaskStatus::Claimed => 'bg-sky-100 text-sky-800',
-            TaskStatus::Running => 'bg-blue-100 text-blue-800',
-            TaskStatus::Review => 'bg-violet-100 text-violet-800',
-            TaskStatus::NeedsAdjustment => 'bg-orange-100 text-orange-800',
-            TaskStatus::Done => 'bg-emerald-100 text-emerald-800',
-            TaskStatus::Failed => 'bg-rose-100 text-rose-800',
-            TaskStatus::Blocked => 'bg-red-100 text-red-800',
-            TaskStatus::Cancelled => 'bg-zinc-200 text-zinc-700',
-        };
+        return [
+            'path' => (string) config('tasks-realtime.websocket.path'),
+            'token' => $this->taskRealtimeTokenService->issue(auth()->user()),
+            'subscriptions' => $subscriptions,
+            'statusPresentations' => $this->taskStatusPresenter->presentations(),
+        ];
     }
 }

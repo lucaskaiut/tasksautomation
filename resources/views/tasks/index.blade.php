@@ -14,6 +14,7 @@
 @endsection
 
 @section('content')
+    <script type="application/json" id="task-stream-config">@json($realtimeConfig)</script>
     <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200">
@@ -36,12 +37,16 @@
                 <tbody class="divide-y divide-slate-200 bg-white">
                     @forelse ($tasks as $task)
                         @php($statusPresentation = $statusPresentations[$task->status->value] ?? ['label' => $task->status->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
-                        <tr>
+                        <tr data-task-row data-task-id="{{ $task->id }}">
                             <td class="px-4 py-3 text-sm font-medium text-slate-950">{{ $task->title }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->project?->name }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">
-                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusPresentation['badge_classes'] }}">
-                                    {{ $statusPresentation['label'] }}
+                                <span
+                                    data-task-field="status-badge"
+                                    data-base-class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusPresentation['badge_classes'] }}"
+                                >
+                                    <span data-task-field="status-label">{{ $statusPresentation['label'] }}</span>
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-slate-600">
@@ -49,9 +54,9 @@
                                     {{ $task->implementation_type?->value }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-sm text-slate-600">{{ $task->review_status?->value ?? '—' }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-600" data-task-field="review-status">{{ $task->review_status?->value ?? '—' }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->revision_count }}</td>
-                            <td class="px-4 py-3 text-sm text-slate-600">
+                            <td class="px-4 py-3 text-sm text-slate-600" data-task-field="last-review">
                                 @if ($task->last_reviewed_at)
                                     <span class="text-xs">{{ $task->last_reviewed_at->format('d/m/Y H:i') }}</span>
                                     @if ($task->lastReviewer)
@@ -62,7 +67,7 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->priority->value }}</td>
-                            <td class="px-4 py-3 text-sm text-slate-600">
+                            <td class="px-4 py-3 text-sm text-slate-600" data-task-field="worker">
                                 @if ($task->claimed_by_worker)
                                     <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
                                         {{ $task->claimed_by_worker }}
@@ -73,7 +78,7 @@
                             </td>
                             <td class="px-4 py-3 text-sm text-slate-600">
                                 <span class="font-mono text-xs text-slate-800">
-                                    {{ $task->attempts }} / {{ $task->max_attempts }}
+                                    <span data-task-field="attempts">{{ $task->attempts }} / {{ $task->max_attempts }}</span>
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->creator?->name }}</td>

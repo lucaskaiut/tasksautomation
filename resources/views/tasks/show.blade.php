@@ -17,33 +17,38 @@
 
 @section('content')
     @php($statusPresentation = $statusPresentations[$task->status->value] ?? ['label' => $task->status->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
-    <div class="space-y-8">
+    <script type="application/json" id="task-stream-config">@json($realtimeConfig)</script>
+    <div class="space-y-8" data-task-show data-task-id="{{ $task->id }}">
         <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Resumo</h3>
             <dl class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Status</dt>
                     <dd class="mt-1">
-                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusPresentation['badge_classes'] }}">
-                            {{ $statusPresentation['label'] }}
+                        <span
+                            data-task-field="status-badge"
+                            data-base-class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                            class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusPresentation['badge_classes'] }}"
+                        >
+                            <span data-task-field="status-label">{{ $statusPresentation['label'] }}</span>
                         </span>
                     </dd>
                 </div>
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Revisão funcional</dt>
-                    <dd class="mt-1 text-sm font-medium text-slate-950">{{ $task->review_status?->value ?? '—' }}</dd>
+                    <dd class="mt-1 text-sm font-medium text-slate-950" data-task-field="review-status">{{ $task->review_status?->value ?? '—' }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Revisões com ajuste</dt>
-                    <dd class="mt-1 text-sm font-medium text-slate-950">{{ $task->revision_count }}</dd>
+                    <dd class="mt-1 text-sm font-medium text-slate-950" data-task-field="revision-count">{{ $task->revision_count }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Prioridade</dt>
-                    <dd class="mt-1 text-sm font-medium text-slate-950">{{ $task->priority->value }}</dd>
+                    <dd class="mt-1 text-sm font-medium text-slate-950" data-task-field="priority">{{ $task->priority->value }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Última revisão</dt>
-                    <dd class="mt-1 text-sm text-slate-950">
+                    <dd class="mt-1 text-sm text-slate-950" data-task-field="last-review">
                         @if ($task->last_reviewed_at)
                             {{ $task->last_reviewed_at->format('d/m/Y H:i') }}
                             @if ($task->lastReviewer)
@@ -56,7 +61,7 @@
                 </div>
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Worker atual</dt>
-                    <dd class="mt-1 text-sm text-slate-950">{{ $task->claimed_by_worker ?? '—' }}</dd>
+                    <dd class="mt-1 text-sm text-slate-950" data-task-field="worker">{{ $task->claimed_by_worker ?? '—' }}</dd>
                 </div>
             </dl>
             <div class="mt-6 space-y-3 text-sm text-slate-800">

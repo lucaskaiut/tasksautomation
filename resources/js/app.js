@@ -1,4 +1,5 @@
 import './bootstrap';
+import './task-status-stream';
 
 import Alpine from 'alpinejs';
 

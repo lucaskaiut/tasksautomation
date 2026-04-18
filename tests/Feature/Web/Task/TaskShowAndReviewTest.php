@@ -51,6 +51,7 @@ class TaskShowAndReviewTest extends TestCase
             ->assertOk()
             ->assertSee($task->title)
             ->assertSee('Voltar à lista')
+            ->assertSee('task-stream-config', false)
             ->assertSee('Histórico de execuções')
             ->assertSee('Histórico de revisões')
             ->assertSee('Registrar revisão funcional')

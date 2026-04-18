@@ -32,6 +32,7 @@ class ListTasksTest extends TestCase
             ->assertSee($task->title)
             ->assertSee('fix')
             ->assertSee('Bloqueada')
+            ->assertSee('task-stream-config', false)
             ->assertSee('bg-red-100', false)
             ->assertDontSee('blocked');
     }

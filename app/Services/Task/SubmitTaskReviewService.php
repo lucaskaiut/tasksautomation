@@ -6,6 +6,7 @@ use App\Models\Task;
 use App\Models\TaskExecution;
 use App\Models\TaskReview;
 use App\Models\User;
+use App\Services\Realtime\TaskStatusStreamPublisher;
 use App\Support\Enums\TaskExecutionStatus;
 use App\Support\Enums\TaskReviewDecision;
 use App\Support\Enums\TaskReviewStatus;
@@ -15,6 +16,11 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class SubmitTaskReviewService
 {
+    public function __construct(
+        private readonly TaskStatusStreamPublisher $taskStatusStreamPublisher,
+    ) {
+    }
+
     public function handle(
         Task $task,
         TaskExecution $execution,
@@ -25,7 +31,9 @@ final class SubmitTaskReviewService
         ?string $expectedBehavior,
         ?string $preserveScope,
     ): TaskReview {
-        return DB::transaction(function () use (
+        $previousStatus = null;
+
+        $review = DB::transaction(function () use (
             $task,
             $execution,
             $reviewer,
@@ -34,9 +42,11 @@ final class SubmitTaskReviewService
             $currentBehavior,
             $expectedBehavior,
             $preserveScope,
+            &$previousStatus,
         ): TaskReview {
             $task = Task::query()->whereKey($task->id)->lockForUpdate()->firstOrFail();
             $execution = TaskExecution::query()->whereKey($execution->id)->lockForUpdate()->firstOrFail();
+            $previousStatus = $task->status?->value ?? (string) $task->status;
 
             if ((int) $execution->task_id !== (int) $task->id) {
                 throw new ConflictHttpException('A execução não pertence a esta tarefa.');
@@ -112,5 +122,13 @@ final class SubmitTaskReviewService
 
             return $review->refresh();
         });
+
+        $freshTask = Task::query()
+            ->with(['project', 'environmentProfile', 'lastReviewer'])
+            ->findOrFail($task->id);
+
+        $this->taskStatusStreamPublisher->publishStatusChange($freshTask, $previousStatus);
+
+        return $review;
     }
 }
