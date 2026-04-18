@@ -37,6 +37,7 @@
                 <tbody class="divide-y divide-slate-200 bg-white">
                     @forelse ($tasks as $task)
                         @php($statusPresentation = $statusPresentations[$task->status->value] ?? ['label' => $task->status->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
+                        @php($reviewStatusPresentation = $task->review_status ? ($reviewStatusPresentations[$task->review_status->value] ?? ['label' => $task->review_status->value, 'badge_classes' => 'bg-slate-100 text-slate-700']) : null)
                         <tr data-task-row data-task-id="{{ $task->id }}">
                             <td class="px-4 py-3 text-sm font-medium text-slate-950">{{ $task->title }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->project?->name }}</td>
@@ -54,7 +55,15 @@
                                     {{ $task->implementation_type?->value }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-sm text-slate-600" data-task-field="review-status">{{ $task->review_status?->value ?? '—' }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-600" data-task-field="review-status">
+                                @if ($reviewStatusPresentation)
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $reviewStatusPresentation['badge_classes'] }}">
+                                        {{ $reviewStatusPresentation['label'] }}
+                                    </span>
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->revision_count }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600" data-task-field="last-review">
                                 @if ($task->last_reviewed_at)

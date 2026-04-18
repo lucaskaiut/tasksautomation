@@ -18,6 +18,7 @@
 @section('content')
     @php($statusPresentation = $statusPresentations[$task->status->value] ?? ['label' => $task->status->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
     <script type="application/json" id="task-stream-config">@json($realtimeConfig)</script>
+    @php($reviewStatusPresentation = $task->review_status ? ($reviewStatusPresentations[$task->review_status->value] ?? ['label' => $task->review_status->value, 'badge_classes' => 'bg-slate-100 text-slate-700']) : null)
     <div class="space-y-8" data-task-show data-task-id="{{ $task->id }}">
         <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Resumo</h3>
@@ -37,6 +38,14 @@
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Revisão funcional</dt>
                     <dd class="mt-1 text-sm font-medium text-slate-950" data-task-field="review-status">{{ $task->review_status?->value ?? '—' }}</dd>
+                        @if ($reviewStatusPresentation)
+                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $reviewStatusPresentation['badge_classes'] }}">
+                                {{ $reviewStatusPresentation['label'] }}
+                            </span>
+                        @else
+                            <span class="text-sm font-medium text-slate-950">—</span>
+                        @endif
+                    </dd>
                 </div>
                 <div>
                     <dt class="text-xs font-medium uppercase text-slate-500">Revisões com ajuste</dt>
