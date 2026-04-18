@@ -4,6 +4,7 @@ namespace Tests\Feature\Web\Task;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Enums\TaskReviewStatus;
 use App\Support\Enums\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,6 +25,7 @@ class ListTasksTest extends TestCase
         $task = Task::factory()->create([
             'implementation_type' => 'fix',
             'status' => TaskStatus::Blocked,
+            'review_status' => TaskReviewStatus::NeedsAdjustment,
         ]);
 
         $this->actingAs($user)
@@ -33,6 +35,9 @@ class ListTasksTest extends TestCase
             ->assertSee('fix')
             ->assertSee('Bloqueada')
             ->assertSee('bg-red-100', false)
-            ->assertDontSee('blocked');
+            ->assertSee('Precisa de ajustes')
+            ->assertSee('bg-orange-100', false)
+            ->assertDontSee('blocked')
+            ->assertDontSee('needs_adjustment');
     }
 }
