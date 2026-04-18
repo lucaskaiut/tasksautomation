@@ -10,6 +10,7 @@ use App\Models\ProjectEnvironmentProfile;
 use App\Models\Task;
 use App\Models\TaskExecution;
 use App\Support\Enums\TaskExecutionStatus;
+use App\Support\Enums\TaskStatus;
 use App\Services\Task\CreateTaskService;
 use App\Services\Task\UpdateTaskService;
 use Illuminate\Http\RedirectResponse;
@@ -29,7 +30,9 @@ class TaskController extends Controller
             ->latest()
             ->paginate(20);
 
-        return view('tasks.index', compact('tasks'));
+        $statusPresentations = $this->taskStatusPresentations();
+
+        return view('tasks.index', compact('tasks', 'statusPresentations'));
     }
 
     public function show(Task $task): View
@@ -53,7 +56,9 @@ class TaskController extends Controller
             ->orderByDesc('id')
             ->first();
 
-        return view('tasks.show', compact('task', 'reviewableExecution'));
+        $statusPresentations = $this->taskStatusPresentations();
+
+        return view('tasks.show', compact('task', 'reviewableExecution', 'statusPresentations'));
     }
 
     /**
@@ -70,7 +75,9 @@ class TaskController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('tasks.create', compact('projects', 'environmentProfiles'));
+        $statusPresentations = $this->taskStatusPresentations();
+
+        return view('tasks.create', compact('projects', 'environmentProfiles', 'statusPresentations'));
     }
 
     /**
@@ -99,7 +106,9 @@ class TaskController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('tasks.edit', compact('task', 'projects', 'environmentProfiles'));
+        $statusPresentations = $this->taskStatusPresentations();
+
+        return view('tasks.edit', compact('task', 'projects', 'environmentProfiles', 'statusPresentations'));
     }
 
     /**
@@ -112,5 +121,52 @@ class TaskController extends Controller
         return redirect()
             ->route('tasks.index')
             ->with('success', 'Tarefa atualizada com sucesso.');
+    }
+
+    /**
+     * @return array<string, array{label: string, badge_classes: string}>
+     */
+    private function taskStatusPresentations(): array
+    {
+        return collect(TaskStatus::cases())
+            ->mapWithKeys(fn (TaskStatus $status): array => [
+                $status->value => [
+                    'label' => $this->taskStatusLabel($status),
+                    'badge_classes' => $this->taskStatusBadgeClasses($status),
+                ],
+            ])
+            ->all();
+    }
+
+    private function taskStatusLabel(TaskStatus $status): string
+    {
+        return match ($status) {
+            TaskStatus::Draft => 'Rascunho',
+            TaskStatus::Pending => 'Pendente',
+            TaskStatus::Claimed => 'Em fila',
+            TaskStatus::Running => 'Em andamento',
+            TaskStatus::Review => 'Em revisão',
+            TaskStatus::NeedsAdjustment => 'Precisa de ajustes',
+            TaskStatus::Done => 'Concluída',
+            TaskStatus::Failed => 'Falhou',
+            TaskStatus::Blocked => 'Bloqueada',
+            TaskStatus::Cancelled => 'Cancelada',
+        };
+    }
+
+    private function taskStatusBadgeClasses(TaskStatus $status): string
+    {
+        return match ($status) {
+            TaskStatus::Draft => 'bg-slate-100 text-slate-700',
+            TaskStatus::Pending => 'bg-amber-100 text-amber-800',
+            TaskStatus::Claimed => 'bg-sky-100 text-sky-800',
+            TaskStatus::Running => 'bg-blue-100 text-blue-800',
+            TaskStatus::Review => 'bg-violet-100 text-violet-800',
+            TaskStatus::NeedsAdjustment => 'bg-orange-100 text-orange-800',
+            TaskStatus::Done => 'bg-emerald-100 text-emerald-800',
+            TaskStatus::Failed => 'bg-rose-100 text-rose-800',
+            TaskStatus::Blocked => 'bg-red-100 text-red-800',
+            TaskStatus::Cancelled => 'bg-zinc-200 text-zinc-700',
+        };
     }
 }

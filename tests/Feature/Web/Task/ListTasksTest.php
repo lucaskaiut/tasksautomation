@@ -4,6 +4,7 @@ namespace Tests\Feature\Web\Task;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Enums\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -22,12 +23,16 @@ class ListTasksTest extends TestCase
         $user = User::factory()->create();
         $task = Task::factory()->create([
             'implementation_type' => 'fix',
+            'status' => TaskStatus::Blocked,
         ]);
 
         $this->actingAs($user)
             ->get(route('tasks.index'))
             ->assertOk()
             ->assertSee($task->title)
-            ->assertSee('fix');
+            ->assertSee('fix')
+            ->assertSee('Bloqueada')
+            ->assertSee('bg-red-100', false)
+            ->assertDontSee('blocked');
     }
 }

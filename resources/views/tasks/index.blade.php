@@ -35,10 +35,15 @@
                 </thead>
                 <tbody class="divide-y divide-slate-200 bg-white">
                     @forelse ($tasks as $task)
+                        @php($statusPresentation = $statusPresentations[$task->status->value] ?? ['label' => $task->status->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
                         <tr>
                             <td class="px-4 py-3 text-sm font-medium text-slate-950">{{ $task->title }}</td>
                             <td class="px-4 py-3 text-sm text-slate-600">{{ $task->project?->name }}</td>
-                            <td class="px-4 py-3 text-sm text-slate-600">{{ $task->status->value }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-600">
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusPresentation['badge_classes'] }}">
+                                    {{ $statusPresentation['label'] }}
+                                </span>
+                            </td>
                             <td class="px-4 py-3 text-sm text-slate-600">
                                 <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                                     {{ $task->implementation_type?->value }}
