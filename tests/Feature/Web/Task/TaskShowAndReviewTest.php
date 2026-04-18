@@ -55,6 +55,7 @@ class TaskShowAndReviewTest extends TestCase
             ->assertSee('Histórico de revisões')
             ->assertSee('Registrar revisão funcional')
             ->assertSee('Em revisão')
+            ->assertSee('Aguardando revisão')
             ->assertSee('bg-violet-100', false);
     }
 

@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\ProjectEnvironmentProfile;
 use App\Models\Task;
 use App\Models\TaskExecution;
+use App\Support\Enums\TaskReviewStatus;
 use App\Support\Enums\TaskExecutionStatus;
 use App\Support\Enums\TaskStatus;
 use App\Services\Task\CreateTaskService;
@@ -32,7 +33,9 @@ class TaskController extends Controller
 
         $statusPresentations = $this->taskStatusPresentations();
 
-        return view('tasks.index', compact('tasks', 'statusPresentations'));
+        $reviewStatusPresentations = $this->taskReviewStatusPresentations();
+
+        return view('tasks.index', compact('tasks', 'statusPresentations', 'reviewStatusPresentations'));
     }
 
     public function show(Task $task): View
@@ -58,7 +61,9 @@ class TaskController extends Controller
 
         $statusPresentations = $this->taskStatusPresentations();
 
-        return view('tasks.show', compact('task', 'reviewableExecution', 'statusPresentations'));
+        $reviewStatusPresentations = $this->taskReviewStatusPresentations();
+
+        return view('tasks.show', compact('task', 'reviewableExecution', 'statusPresentations', 'reviewStatusPresentations'));
     }
 
     /**
@@ -167,6 +172,39 @@ class TaskController extends Controller
             TaskStatus::Failed => 'bg-rose-100 text-rose-800',
             TaskStatus::Blocked => 'bg-red-100 text-red-800',
             TaskStatus::Cancelled => 'bg-zinc-200 text-zinc-700',
+        };
+    }
+
+    /**
+     * @return array<string, array{label: string, badge_classes: string}>
+     */
+    private function taskReviewStatusPresentations(): array
+    {
+        return collect(TaskReviewStatus::cases())
+            ->mapWithKeys(fn (TaskReviewStatus $status): array => [
+                $status->value => [
+                    'label' => $this->taskReviewStatusLabel($status),
+                    'badge_classes' => $this->taskReviewStatusBadgeClasses($status),
+                ],
+            ])
+            ->all();
+    }
+
+    private function taskReviewStatusLabel(TaskReviewStatus $status): string
+    {
+        return match ($status) {
+            TaskReviewStatus::PendingReview => 'Aguardando revisão',
+            TaskReviewStatus::Approved => 'Aprovada',
+            TaskReviewStatus::NeedsAdjustment => 'Precisa de ajustes',
+        };
+    }
+
+    private function taskReviewStatusBadgeClasses(TaskReviewStatus $status): string
+    {
+        return match ($status) {
+            TaskReviewStatus::PendingReview => 'bg-violet-100 text-violet-800',
+            TaskReviewStatus::Approved => 'bg-emerald-100 text-emerald-800',
+            TaskReviewStatus::NeedsAdjustment => 'bg-orange-100 text-orange-800',
         };
     }
 }
