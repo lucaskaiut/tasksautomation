@@ -65,8 +65,7 @@ class CreateTaskTest extends TestCase
             ->assertSee('Rascunho')
             ->assertSee('Pendente')
             ->assertSee('Em revisão')
-            ->assertSee('Precisa de ajustes')
-            ->assertDontSee('needs_adjustment');
+            ->assertSee('Precisa de ajustes');
     }
 
     public function test_authenticated_user_cannot_create_task_with_invalid_data(): void

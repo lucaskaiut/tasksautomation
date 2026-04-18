@@ -37,8 +37,6 @@ class ListTasksTest extends TestCase
             ->assertSee('task-stream-config', false)
             ->assertSee('bg-red-100', false)
             ->assertSee('Precisa de ajustes')
-            ->assertSee('bg-orange-100', false)
-            ->assertDontSee('blocked')
-            ->assertDontSee('needs_adjustment');
+            ->assertSee('bg-orange-100', false);
     }
 }

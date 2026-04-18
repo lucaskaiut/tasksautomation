@@ -5,12 +5,12 @@ namespace App\Services\Realtime;
 use App\Models\Task;
 use App\Support\Realtime\TaskStatusPayloadFactory;
 use Illuminate\Support\Carbon;
-final class TaskStatusStreamPublisher
+
+class TaskStatusStreamPublisher
 {
     public function __construct(
         private readonly TaskStatusPayloadFactory $payloadFactory,
-    ) {
-    }
+    ) {}
 
     public function publishStatusChange(Task $task, ?string $previousStatus): void
     {

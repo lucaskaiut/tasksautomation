@@ -5,15 +5,14 @@ namespace App\Support\Realtime;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use App\Support\TaskStatusPresenter;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\CarbonInterface;
 
 final class TaskStatusPayloadFactory
 {
     public function __construct(
         private readonly TaskStatusPresenter $taskStatusPresenter,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>
