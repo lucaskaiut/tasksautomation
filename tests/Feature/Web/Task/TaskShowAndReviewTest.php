@@ -60,6 +60,7 @@ class TaskShowAndReviewTest extends TestCase
             ->assertSee($task->title)
             ->assertSee('Voltar à lista')
             ->assertSee('task-stream-config', false)
+            ->assertSee('grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3', false)
             ->assertSee('Dados de análise')
             ->assertSee('Dados de execução')
             ->assertSee('Dados de handoff')
