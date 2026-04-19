@@ -1,4 +1,109 @@
-const configElement = document.getElementById('task-stream-config');
+const defaultStagePresentations = () => ({
+    analysis: {
+        label: 'Análise',
+        badge_classes: 'bg-sky-100 text-sky-800',
+    },
+    'implementation:backend': {
+        label: 'Implementação Backend',
+        badge_classes: 'bg-emerald-100 text-emerald-800',
+    },
+    'implementation:frontend': {
+        label: 'Implementação Frontend',
+        badge_classes: 'bg-amber-100 text-amber-800',
+    },
+    'implementation:infra': {
+        label: 'Implementação Infra',
+        badge_classes: 'bg-slate-200 text-slate-800',
+    },
+});
+
+const escapeHtml = (value) => String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('\'', '&#039;');
+
+const routeFor = (template, taskId) => {
+    if (typeof template !== 'string') {
+        return '#';
+    }
+
+    return template.replace('__TASK__', encodeURIComponent(String(taskId)));
+};
+
+export const renderIndexRowMarkup = (eventPayload, runtimeConfig = {}) => {
+    const task = eventPayload.task || {};
+    const presentation = eventPayload.presentation || {};
+    const stagePresentations = runtimeConfig.stagePresentations || defaultStagePresentations();
+    const status = presentation.status || {
+        label: task.status || '—',
+        badge_classes: 'bg-slate-100 text-slate-700',
+    };
+    const stage = stagePresentations[task.current_stage] || {
+        label: task.current_stage || '—',
+        badge_classes: 'bg-slate-100 text-slate-700',
+    };
+    const reviewStatus = presentation.review_status || null;
+    const showUrl = routeFor(runtimeConfig.routes?.show, task.id);
+    const editUrl = routeFor(runtimeConfig.routes?.edit, task.id);
+    const creatorName = presentation.creator_name || task.creator?.name || '—';
+    const workerMarkup = presentation.worker
+        ? `<span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">${escapeHtml(presentation.worker)}</span>`
+        : '<span class="text-xs text-slate-400">—</span>';
+    const reviewMarkup = reviewStatus
+        ? `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${escapeHtml(reviewStatus.badge_classes)}">${escapeHtml(reviewStatus.label)}</span>`
+        : '—';
+    const lastReviewMarkup = presentation.last_reviewed_at
+        ? `<span class="text-xs">${escapeHtml(presentation.last_reviewed_at)}</span>${presentation.last_reviewer_name ? `<span class="block text-xs text-slate-400">${escapeHtml(presentation.last_reviewer_name)}</span>` : ''}`
+        : '<span class="text-xs text-slate-400">—</span>';
+
+    return `
+        <tr data-task-row data-task-id="${escapeHtml(String(task.id || ''))}">
+            <td class="px-4 py-3 text-sm font-medium text-slate-950">${escapeHtml(task.title || '—')}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${escapeHtml(task.project?.name || '—')}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${escapeHtml(status.badge_classes)}">
+                    ${escapeHtml(status.label)}
+                </span>
+            </td>
+            <td class="px-4 py-3 text-sm text-slate-600">
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${escapeHtml(stage.badge_classes)}">
+                    ${escapeHtml(stage.label)}
+                </span>
+            </td>
+            <td class="px-4 py-3 text-sm text-slate-600">
+                <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    ${escapeHtml(task.implementation_type || '—')}
+                </span>
+            </td>
+            <td class="px-4 py-3 text-sm text-slate-600">${reviewMarkup}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${escapeHtml(String(task.revision_count ?? 0))}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${lastReviewMarkup}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${escapeHtml(task.priority || '—')}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${workerMarkup}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">
+                <span class="font-mono text-xs text-slate-800">${escapeHtml(presentation.attempts || `${task.attempts ?? 0} / ${task.max_attempts ?? 0}`)}</span>
+            </td>
+            <td class="px-4 py-3 text-sm text-slate-600">${escapeHtml(creatorName)}</td>
+            <td class="px-4 py-3 text-right text-sm">
+                <a href="${escapeHtml(showUrl)}" class="font-semibold text-sky-700 hover:underline">Ver</a>
+                <span class="text-slate-300">·</span>
+                <a href="${escapeHtml(editUrl)}" class="font-semibold text-sky-700 hover:underline">Editar</a>
+            </td>
+        </tr>
+    `;
+};
+
+export const emptyRowMarkup = () => `
+    <tr>
+        <td colspan="13" class="px-4 py-10 text-center text-sm text-slate-500">
+            Nenhuma tarefa cadastrada.
+        </td>
+    </tr>
+`;
+
+const configElement = typeof document === 'undefined' ? null : document.getElementById('task-stream-config');
 
 if (!configElement) {
     // No-op outside task pages.
@@ -156,81 +261,12 @@ if (!configElement) {
         }
 
         if (snapshots.length === 0) {
-            indexBody.innerHTML = emptyRow();
+            indexBody.innerHTML = emptyRowMarkup();
 
             return;
         }
 
-        indexBody.innerHTML = snapshots.map(renderIndexRow).join('');
-    };
-
-    const renderIndexRow = (eventPayload) => {
-        const task = eventPayload.task || {};
-        const presentation = eventPayload.presentation || {};
-        const status = presentation.status || {
-            label: task.status || '—',
-            badge_classes: 'bg-slate-100 text-slate-700',
-        };
-        const reviewStatus = presentation.review_status || null;
-        const showUrl = routeFor(config.routes?.show, task.id);
-        const editUrl = routeFor(config.routes?.edit, task.id);
-        const creatorName = presentation.creator_name || task.creator?.name || '—';
-        const workerMarkup = presentation.worker
-            ? `<span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">${escapeHtml(presentation.worker)}</span>`
-            : '<span class="text-xs text-slate-400">—</span>';
-        const reviewMarkup = reviewStatus
-            ? `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${escapeHtml(reviewStatus.badge_classes)}">${escapeHtml(reviewStatus.label)}</span>`
-            : '—';
-        const lastReviewMarkup = presentation.last_reviewed_at
-            ? `<span class="text-xs">${escapeHtml(presentation.last_reviewed_at)}</span>${presentation.last_reviewer_name ? `<span class="block text-xs text-slate-400">${escapeHtml(presentation.last_reviewer_name)}</span>` : ''}`
-            : '<span class="text-xs text-slate-400">—</span>';
-
-        return `
-            <tr data-task-row data-task-id="${escapeHtml(String(task.id || ''))}">
-                <td class="px-4 py-3 text-sm font-medium text-slate-950">${escapeHtml(task.title || '—')}</td>
-                <td class="px-4 py-3 text-sm text-slate-600">${escapeHtml(task.project?.name || '—')}</td>
-                <td class="px-4 py-3 text-sm text-slate-600">
-                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${escapeHtml(status.badge_classes)}">
-                        ${escapeHtml(status.label)}
-                    </span>
-                </td>
-                <td class="px-4 py-3 text-sm text-slate-600">
-                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                        ${escapeHtml(task.implementation_type || '—')}
-                    </span>
-                </td>
-                <td class="px-4 py-3 text-sm text-slate-600">${reviewMarkup}</td>
-                <td class="px-4 py-3 text-sm text-slate-600">${escapeHtml(String(task.revision_count ?? 0))}</td>
-                <td class="px-4 py-3 text-sm text-slate-600">${lastReviewMarkup}</td>
-                <td class="px-4 py-3 text-sm text-slate-600">${escapeHtml(task.priority || '—')}</td>
-                <td class="px-4 py-3 text-sm text-slate-600">${workerMarkup}</td>
-                <td class="px-4 py-3 text-sm text-slate-600">
-                    <span class="font-mono text-xs text-slate-800">${escapeHtml(presentation.attempts || `${task.attempts ?? 0} / ${task.max_attempts ?? 0}`)}</span>
-                </td>
-                <td class="px-4 py-3 text-sm text-slate-600">${escapeHtml(creatorName)}</td>
-                <td class="px-4 py-3 text-right text-sm">
-                    <a href="${escapeHtml(showUrl)}" class="font-semibold text-sky-700 hover:underline">Ver</a>
-                    <span class="text-slate-300">·</span>
-                    <a href="${escapeHtml(editUrl)}" class="font-semibold text-sky-700 hover:underline">Editar</a>
-                </td>
-            </tr>
-        `;
-    };
-
-    const emptyRow = () => `
-        <tr>
-            <td colspan="12" class="px-4 py-10 text-center text-sm text-slate-500">
-                Nenhuma tarefa cadastrada.
-            </td>
-        </tr>
-    `;
-
-    const routeFor = (template, taskId) => {
-        if (typeof template !== 'string') {
-            return '#';
-        }
-
-        return template.replace('__TASK__', encodeURIComponent(String(taskId)));
+        indexBody.innerHTML = snapshots.map((snapshot) => renderIndexRowMarkup(snapshot, config)).join('');
     };
 
     const setText = (container, key, value) => {
@@ -269,13 +305,6 @@ if (!configElement) {
         wrapper.classList.add('hidden');
         element.textContent = '';
     };
-
-    const escapeHtml = (value) => String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll('\'', '&#039;');
 
     connect();
 }
