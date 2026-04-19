@@ -37,6 +37,9 @@ class CreateTaskTest extends TestCase
                 'status' => 'pending',
                 'priority' => 'medium',
                 'implementation_type' => 'feature',
+                'current_stage' => 'analysis',
+                'analysis_domain' => 'backend',
+                'analysis_next_stage' => 'implementation:backend',
             ])
             ->assertRedirect(route('tasks.index'))
             ->assertSessionHas('success');
@@ -47,6 +50,9 @@ class CreateTaskTest extends TestCase
             'created_by' => $user->id,
             'title' => 'Minha tarefa',
             'implementation_type' => 'feature',
+            'current_stage' => 'analysis',
+            'analysis_domain' => 'backend',
+            'analysis_next_stage' => 'implementation:backend',
         ]);
     }
 
@@ -65,7 +71,10 @@ class CreateTaskTest extends TestCase
             ->assertSee('Rascunho')
             ->assertSee('Pendente')
             ->assertSee('Em revisão')
-            ->assertSee('Precisa de ajustes');
+            ->assertSee('Precisa de ajustes')
+            ->assertSee('Estágio atual')
+            ->assertSee('Análise')
+            ->assertSee('Implementação Backend');
     }
 
     public function test_create_form_exposes_environment_profiles_for_selected_project_filtering(): void
@@ -94,7 +103,7 @@ class CreateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertRedirect(route('tasks.create'))
-            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type']);
+            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type', 'current_stage']);
 
         $this->actingAs($user)
             ->get(route('tasks.create'))
@@ -123,7 +132,7 @@ class CreateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertRedirect(route('tasks.create'))
-            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type']);
+            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type', 'current_stage']);
 
         $this->assertDatabaseCount('tasks', 0);
     }
@@ -147,6 +156,7 @@ class CreateTaskTest extends TestCase
                 'description' => 'Descrição',
                 'priority' => 'low',
                 'implementation_type' => 'fix',
+                'current_stage' => 'analysis',
             ])
             ->assertRedirect(route('tasks.create'))
             ->assertSessionHasErrors(['environment_profile_id']);

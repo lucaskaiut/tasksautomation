@@ -33,10 +33,20 @@ class CreateTaskTest extends TestCase
                 'status' => 'pending',
                 'priority' => 'low',
                 'implementation_type' => 'feature',
+                'current_stage' => 'analysis',
+                'analysis_domain' => 'backend',
+                'analysis_confidence' => 0.92,
+                'analysis_next_stage' => 'implementation:backend',
+                'analysis_summary' => 'API ready for backend.',
+                'analysis_evidence' => ['entrypoint' => 'TaskController'],
             ])
             ->assertCreated()
             ->assertJsonPath('data.title', 'API Task')
-            ->assertJsonPath('data.implementation_type', 'feature');
+            ->assertJsonPath('data.implementation_type', 'feature')
+            ->assertJsonPath('data.current_stage', 'analysis')
+            ->assertJsonPath('data.analysis.domain', 'backend')
+            ->assertJsonPath('data.analysis.next_stage', 'implementation:backend')
+            ->assertJsonPath('data.analysis.evidence.entrypoint', 'TaskController');
 
         $this->assertDatabaseHas('tasks', [
             'project_id' => $project->id,
@@ -44,6 +54,8 @@ class CreateTaskTest extends TestCase
             'created_by' => $user->id,
             'title' => 'API Task',
             'implementation_type' => 'feature',
+            'current_stage' => 'analysis',
+            'analysis_domain' => 'backend',
         ]);
     }
 
@@ -60,7 +72,7 @@ class CreateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['project_id', 'title', 'description', 'priority', 'implementation_type']);
+            ->assertJsonValidationErrors(['project_id', 'title', 'description', 'priority', 'implementation_type', 'current_stage']);
     }
 
     public function test_environment_profile_must_belong_to_same_project(): void
@@ -83,6 +95,7 @@ class CreateTaskTest extends TestCase
                 'description' => 'Desc',
                 'priority' => 'medium',
                 'implementation_type' => 'fix',
+                'current_stage' => 'analysis',
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['environment_profile_id']);

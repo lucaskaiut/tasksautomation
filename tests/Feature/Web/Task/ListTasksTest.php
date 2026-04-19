@@ -5,6 +5,7 @@ namespace Tests\Feature\Web\Task;
 use App\Models\Task;
 use App\Models\User;
 use App\Support\Enums\TaskReviewStatus;
+use App\Support\Enums\TaskStage;
 use App\Support\Enums\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -26,6 +27,7 @@ class ListTasksTest extends TestCase
             'implementation_type' => 'fix',
             'status' => TaskStatus::Blocked,
             'review_status' => TaskReviewStatus::NeedsAdjustment,
+            'current_stage' => TaskStage::ImplementationInfra,
         ]);
 
         $this->actingAs($user)
@@ -34,6 +36,7 @@ class ListTasksTest extends TestCase
             ->assertSee($task->title)
             ->assertSee('fix')
             ->assertSee('Bloqueada')
+            ->assertSee('Implementação Infra')
             ->assertSee('task-stream-config', false)
             ->assertSee('bg-red-100', false)
             ->assertSee('Precisa de ajustes')

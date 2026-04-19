@@ -46,6 +46,10 @@ class UpdateTaskTest extends TestCase
                 'status' => 'draft',
                 'priority' => 'high',
                 'implementation_type' => 'fix',
+                'current_stage' => 'implementation:backend',
+                'analysis_domain' => 'backend',
+                'analysis_next_stage' => 'implementation:backend',
+                'handoff_to_stage' => 'implementation:backend',
             ])
             ->assertRedirect(route('tasks.index'))
             ->assertSessionHas('success');
@@ -57,6 +61,10 @@ class UpdateTaskTest extends TestCase
             'status' => 'draft',
             'priority' => 'high',
             'implementation_type' => 'fix',
+            'current_stage' => 'implementation:backend',
+            'analysis_domain' => 'backend',
+            'analysis_next_stage' => 'implementation:backend',
+            'handoff_to_stage' => 'implementation:backend',
         ]);
     }
 
@@ -108,7 +116,7 @@ class UpdateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertRedirect(route('tasks.edit', $task))
-            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type']);
+            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type', 'current_stage']);
     }
 
     public function test_environment_profile_must_belong_to_same_project_on_update(): void
@@ -135,6 +143,7 @@ class UpdateTaskTest extends TestCase
                 'description' => 'Descrição',
                 'priority' => 'low',
                 'implementation_type' => 'feature',
+                'current_stage' => 'analysis',
             ])
             ->assertRedirect(route('tasks.edit', $task))
             ->assertSessionHasErrors(['environment_profile_id']);
