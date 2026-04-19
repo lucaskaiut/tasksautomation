@@ -13,6 +13,7 @@ use App\Services\Task\CreateTaskService;
 use App\Services\Task\UpdateTaskService;
 use App\Support\Enums\TaskExecutionStatus;
 use App\Support\Enums\TaskReviewStatus;
+use App\Support\Enums\TaskStage;
 use App\Support\Realtime\TaskRealtimeTokenService;
 use App\Support\TaskStatusPresenter;
 use Illuminate\Http\RedirectResponse;
@@ -38,6 +39,7 @@ class TaskController extends Controller
             ->paginate(20);
 
         $statusPresentations = $this->taskStatusPresenter->presentations();
+        $stagePresentations = $this->taskStagePresentations();
         $realtimeConfig = $this->realtimeConfig(
             subscriptions: [[
                 'scope' => 'index',
@@ -48,7 +50,7 @@ class TaskController extends Controller
 
         $reviewStatusPresentations = $this->taskReviewStatusPresentations();
 
-        return view('tasks.index', compact('tasks', 'statusPresentations', 'reviewStatusPresentations', 'realtimeConfig'));
+        return view('tasks.index', compact('tasks', 'statusPresentations', 'stagePresentations', 'reviewStatusPresentations', 'realtimeConfig'));
     }
 
     public function show(Task $task): View
@@ -73,6 +75,7 @@ class TaskController extends Controller
             ->first();
 
         $statusPresentations = $this->taskStatusPresenter->presentations();
+        $stagePresentations = $this->taskStagePresentations();
         $realtimeConfig = $this->realtimeConfig(
             subscriptions: [[
                 'scope' => 'task',
@@ -82,7 +85,7 @@ class TaskController extends Controller
 
         $reviewStatusPresentations = $this->taskReviewStatusPresentations();
 
-        return view('tasks.show', compact('task', 'reviewableExecution', 'statusPresentations', 'reviewStatusPresentations', 'realtimeConfig'));
+        return view('tasks.show', compact('task', 'reviewableExecution', 'statusPresentations', 'stagePresentations', 'reviewStatusPresentations', 'realtimeConfig'));
     }
 
     /**
@@ -100,8 +103,9 @@ class TaskController extends Controller
             ->get();
 
         $statusPresentations = $this->taskStatusPresenter->presentations();
+        $stagePresentations = $this->taskStagePresentations();
 
-        return view('tasks.create', compact('projects', 'environmentProfiles', 'statusPresentations'));
+        return view('tasks.create', compact('projects', 'environmentProfiles', 'statusPresentations', 'stagePresentations'));
     }
 
     /**
@@ -131,8 +135,9 @@ class TaskController extends Controller
             ->get();
 
         $statusPresentations = $this->taskStatusPresenter->presentations();
+        $stagePresentations = $this->taskStagePresentations();
 
-        return view('tasks.edit', compact('task', 'projects', 'environmentProfiles', 'statusPresentations'));
+        return view('tasks.edit', compact('task', 'projects', 'environmentProfiles', 'statusPresentations', 'stagePresentations'));
     }
 
     /**
@@ -177,6 +182,21 @@ class TaskController extends Controller
                 $status->value => [
                     'label' => $this->taskReviewStatusLabel($status),
                     'badge_classes' => $this->taskReviewStatusBadgeClasses($status),
+                ],
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<string, array{label: string, badge_classes: string}>
+     */
+    private function taskStagePresentations(): array
+    {
+        return collect(TaskStage::cases())
+            ->mapWithKeys(fn (TaskStage $stage): array => [
+                $stage->value => [
+                    'label' => $stage->label(),
+                    'badge_classes' => $stage->badgeClasses(),
                 ],
             ])
             ->all();

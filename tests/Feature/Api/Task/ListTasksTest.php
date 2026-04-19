@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Task;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Enums\TaskStage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -22,12 +23,15 @@ class ListTasksTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
-        Task::factory()->count(2)->create();
+        Task::factory()->count(2)->create([
+            'current_stage' => TaskStage::ImplementationBackend,
+        ]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/tasks')
             ->assertOk()
             ->assertJsonPath('data.0.implementation_type', fn ($value) => in_array($value, ['feature', 'fix'], true))
+            ->assertJsonPath('data.0.current_stage', 'implementation:backend')
             ->assertJsonStructure([
                 'data',
                 'links',

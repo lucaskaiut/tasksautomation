@@ -2,7 +2,7 @@
 
 @section('title', 'Tarefas')
 @section('page-title', 'Tarefas')
-@section('page-description', 'Acompanhe o fluxo de execução, revisão e prioridade das tarefas em andamento.')
+@section('page-description', 'Acompanhe o fluxo orientado por estágio, execução, análise e handoff das tarefas em andamento.')
 
 @section('page-actions')
     <a
@@ -23,6 +23,7 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Título</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Projeto</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Estágio</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Implementação</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Revisão</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ajustes</th>
@@ -37,6 +38,7 @@
                 <tbody class="divide-y divide-slate-200 bg-white" data-task-list-body>
                     @forelse ($tasks as $task)
                         @php($statusPresentation = $statusPresentations[$task->status->value] ?? ['label' => $task->status->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
+                        @php($stagePresentation = $stagePresentations[$task->current_stage->value] ?? ['label' => $task->current_stage->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
                         @php($reviewStatusPresentation = $task->review_status ? ($reviewStatusPresentations[$task->review_status->value] ?? ['label' => $task->review_status->value, 'badge_classes' => 'bg-slate-100 text-slate-700']) : null)
                         <tr data-task-row data-task-id="{{ $task->id }}">
                             <td class="px-4 py-3 text-sm font-medium text-slate-950">{{ $task->title }}</td>
@@ -48,6 +50,11 @@
                                     class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusPresentation['badge_classes'] }}"
                                 >
                                     <span data-task-field="status-label">{{ $statusPresentation['label'] }}</span>
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-slate-600">
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $stagePresentation['badge_classes'] }}">
+                                    {{ $stagePresentation['label'] }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-slate-600">
@@ -103,7 +110,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="px-4 py-10 text-center text-sm text-slate-500">
+                            <td colspan="13" class="px-4 py-10 text-center text-sm text-slate-500">
                                 Nenhuma tarefa cadastrada.
                             </td>
                         </tr>

@@ -33,16 +33,27 @@ class UpdateTaskTest extends TestCase
                 'status' => 'pending',
                 'priority' => 'high',
                 'implementation_type' => 'fix',
+                'current_stage' => 'implementation:frontend',
+                'analysis_domain' => 'frontend',
+                'analysis_next_stage' => 'implementation:frontend',
+                'stage_execution_stage' => 'implementation:frontend',
+                'handoff_to_stage' => 'implementation:frontend',
             ])
             ->assertOk()
             ->assertJsonPath('data.title', 'Updated title')
-            ->assertJsonPath('data.implementation_type', 'fix');
+            ->assertJsonPath('data.implementation_type', 'fix')
+            ->assertJsonPath('data.current_stage', 'implementation:frontend')
+            ->assertJsonPath('data.analysis.domain', 'frontend')
+            ->assertJsonPath('data.stage_execution.stage', 'implementation:frontend');
 
         $this->assertDatabaseHas('tasks', [
             'id' => $task->id,
             'title' => 'Updated title',
             'priority' => 'high',
             'implementation_type' => 'fix',
+            'current_stage' => 'implementation:frontend',
+            'analysis_domain' => 'frontend',
+            'handoff_to_stage' => 'implementation:frontend',
         ]);
     }
 
@@ -61,6 +72,6 @@ class UpdateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['title', 'description', 'priority', 'implementation_type']);
+            ->assertJsonValidationErrors(['title', 'description', 'priority', 'implementation_type', 'current_stage']);
     }
 }
