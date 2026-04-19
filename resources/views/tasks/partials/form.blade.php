@@ -1,17 +1,18 @@
 @php
-    $selectedProjectId = (int) old('project_id', $task->project_id ?? 0);
-    $selectedEnvironmentProfileId = old('environment_profile_id', $task->environment_profile_id ?? '');
-    $selectedStatus = old('status', $task->status->value ?? \App\Support\Enums\TaskStatus::Pending->value);
-    $selectedPriority = old('priority', $task->priority->value ?? \App\Support\Enums\TaskPriority::Medium->value);
-    $selectedImplementationType = old('implementation_type', $task->implementation_type?->value ?? \App\Support\Enums\TaskImplementationType::Feature->value);
-    $selectedCurrentStage = old('current_stage', $task->current_stage?->value ?? \App\Support\Enums\TaskStage::Analysis->value);
-    $selectedAnalysisDomain = old('analysis_domain', $task->analysis_domain?->value ?? '');
-    $selectedAnalysisNextStage = old('analysis_next_stage', $task->analysis_next_stage?->value ?? '');
-    $selectedExecutionStage = old('stage_execution_stage', $task->stage_execution_stage?->value ?? '');
-    $selectedHandoffFromStage = old('handoff_from_stage', $task->handoff_from_stage?->value ?? '');
-    $selectedHandoffToStage = old('handoff_to_stage', $task->handoff_to_stage?->value ?? '');
-    $stageExecutionStartedAt = old('stage_execution_started_at', $task->stage_execution_started_at?->format('Y-m-d\TH:i') ?? '');
-    $stageExecutionFinishedAt = old('stage_execution_finished_at', $task->stage_execution_finished_at?->format('Y-m-d\TH:i') ?? '');
+    $task = $task ?? null;
+    $selectedProjectId = (int) old('project_id', $task?->project_id ?? 0);
+    $selectedEnvironmentProfileId = old('environment_profile_id', $task?->environment_profile_id ?? '');
+    $selectedStatus = old('status', $task?->status->value ?? \App\Support\Enums\TaskStatus::Pending->value);
+    $selectedPriority = old('priority', $task?->priority->value ?? \App\Support\Enums\TaskPriority::Medium->value);
+    $selectedImplementationType = old('implementation_type', $task?->implementation_type?->value ?? \App\Support\Enums\TaskImplementationType::Feature->value);
+    $selectedCurrentStage = old('current_stage', $task?->current_stage?->value ?? \App\Support\Enums\TaskStage::Analysis->value);
+    $selectedAnalysisDomain = old('analysis_domain', $task?->analysis_domain?->value ?? '');
+    $selectedAnalysisNextStage = old('analysis_next_stage', $task?->analysis_next_stage?->value ?? '');
+    $selectedExecutionStage = old('stage_execution_stage', $task?->stage_execution_stage?->value ?? '');
+    $selectedHandoffFromStage = old('handoff_from_stage', $task?->handoff_from_stage?->value ?? '');
+    $selectedHandoffToStage = old('handoff_to_stage', $task?->handoff_to_stage?->value ?? '');
+    $stageExecutionStartedAt = old('stage_execution_started_at', $task?->stage_execution_started_at?->format('Y-m-d\TH:i') ?? '');
+    $stageExecutionFinishedAt = old('stage_execution_finished_at', $task?->stage_execution_finished_at?->format('Y-m-d\TH:i') ?? '');
     $jsonFlags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
     $jsonFieldValue = static function (string $field, mixed $value) use ($jsonFlags): string {
         $oldValue = old($field);
@@ -110,13 +111,13 @@
 
         <div class="mt-6">
             <x-input-label for="title" value="Título" />
-            <x-text-input id="title" name="title" type="text" class="mt-1 block w-full" :value="old('title', $task->title ?? '')" required />
+            <x-text-input id="title" name="title" type="text" class="mt-1 block w-full" :value="old('title', $task?->title ?? '')" required />
             <x-input-error class="mt-2" :messages="$errors->get('title')" />
         </div>
 
         <div class="mt-6">
             <x-input-label for="description" value="Descrição" />
-            <textarea id="description" name="description" rows="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>{{ old('description', $task->description ?? '') }}</textarea>
+            <textarea id="description" name="description" rows="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>{{ old('description', $task?->description ?? '') }}</textarea>
             <x-input-error class="mt-2" :messages="$errors->get('description')" />
         </div>
 
@@ -161,13 +162,13 @@
         <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
                 <x-input-label for="deliverables" value="Entregáveis (opcional)" />
-                <textarea id="deliverables" name="deliverables" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('deliverables', $task->deliverables ?? '') }}</textarea>
+                <textarea id="deliverables" name="deliverables" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('deliverables', $task?->deliverables ?? '') }}</textarea>
                 <x-input-error class="mt-2" :messages="$errors->get('deliverables')" />
             </div>
 
             <div>
                 <x-input-label for="constraints" value="Restrições (opcional)" />
-                <textarea id="constraints" name="constraints" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('constraints', $task->constraints ?? '') }}</textarea>
+                <textarea id="constraints" name="constraints" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('constraints', $task?->constraints ?? '') }}</textarea>
                 <x-input-error class="mt-2" :messages="$errors->get('constraints')" />
             </div>
         </div>
@@ -214,7 +215,7 @@
 
             <div>
                 <x-input-label for="analysis_confidence" value="Confiança (0.00 a 1.00)" />
-                <x-text-input id="analysis_confidence" name="analysis_confidence" type="number" min="0" max="1" step="0.01" class="mt-1 block w-full" :value="old('analysis_confidence', $task->analysis_confidence ?? '')" />
+                <x-text-input id="analysis_confidence" name="analysis_confidence" type="number" min="0" max="1" step="0.01" class="mt-1 block w-full" :value="old('analysis_confidence', $task?->analysis_confidence ?? '')" />
                 <x-input-error class="mt-2" :messages="$errors->get('analysis_confidence')" />
             </div>
 
@@ -234,33 +235,33 @@
 
         <div class="mt-6">
             <x-input-label for="analysis_summary" value="Resumo da análise" />
-            <textarea id="analysis_summary" name="analysis_summary" rows="4" class="mt-1 block w-full rounded-md border-emerald-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ old('analysis_summary', $task->analysis_summary ?? '') }}</textarea>
+            <textarea id="analysis_summary" name="analysis_summary" rows="4" class="mt-1 block w-full rounded-md border-emerald-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ old('analysis_summary', $task?->analysis_summary ?? '') }}</textarea>
             <x-input-error class="mt-2" :messages="$errors->get('analysis_summary')" />
         </div>
 
         <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
             <div>
                 <x-input-label for="analysis_evidence" value="Evidências (JSON)" />
-                <textarea id="analysis_evidence" name="analysis_evidence" rows="8" class="mt-1 block w-full rounded-md border-emerald-300 font-mono text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ $jsonFieldValue('analysis_evidence', $task->analysis_evidence ?? null) }}</textarea>
+                <textarea id="analysis_evidence" name="analysis_evidence" rows="8" class="mt-1 block w-full rounded-md border-emerald-300 font-mono text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ $jsonFieldValue('analysis_evidence', $task?->analysis_evidence ?? null) }}</textarea>
                 <x-input-error class="mt-2" :messages="$errors->get('analysis_evidence')" />
             </div>
 
             <div>
                 <x-input-label for="analysis_risks" value="Riscos (JSON)" />
-                <textarea id="analysis_risks" name="analysis_risks" rows="8" class="mt-1 block w-full rounded-md border-emerald-300 font-mono text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ $jsonFieldValue('analysis_risks', $task->analysis_risks ?? null) }}</textarea>
+                <textarea id="analysis_risks" name="analysis_risks" rows="8" class="mt-1 block w-full rounded-md border-emerald-300 font-mono text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ $jsonFieldValue('analysis_risks', $task?->analysis_risks ?? null) }}</textarea>
                 <x-input-error class="mt-2" :messages="$errors->get('analysis_risks')" />
             </div>
 
             <div>
                 <x-input-label for="analysis_artifacts" value="Artefatos (JSON)" />
-                <textarea id="analysis_artifacts" name="analysis_artifacts" rows="8" class="mt-1 block w-full rounded-md border-emerald-300 font-mono text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ $jsonFieldValue('analysis_artifacts', $task->analysis_artifacts ?? null) }}</textarea>
+                <textarea id="analysis_artifacts" name="analysis_artifacts" rows="8" class="mt-1 block w-full rounded-md border-emerald-300 font-mono text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ $jsonFieldValue('analysis_artifacts', $task?->analysis_artifacts ?? null) }}</textarea>
                 <x-input-error class="mt-2" :messages="$errors->get('analysis_artifacts')" />
             </div>
         </div>
 
         <div class="mt-6">
             <x-input-label for="analysis_notes" value="Observações para o próximo estágio" />
-            <textarea id="analysis_notes" name="analysis_notes" rows="4" class="mt-1 block w-full rounded-md border-emerald-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ old('analysis_notes', $task->analysis_notes ?? '') }}</textarea>
+            <textarea id="analysis_notes" name="analysis_notes" rows="4" class="mt-1 block w-full rounded-md border-emerald-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500">{{ old('analysis_notes', $task?->analysis_notes ?? '') }}</textarea>
             <x-input-error class="mt-2" :messages="$errors->get('analysis_notes')" />
         </div>
     </section>
@@ -274,7 +275,7 @@
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
             <div>
                 <x-input-label for="stage_execution_reference" value="Identificador da execução" />
-                <x-text-input id="stage_execution_reference" name="stage_execution_reference" type="text" class="mt-1 block w-full" :value="old('stage_execution_reference', $task->stage_execution_reference ?? '')" />
+                <x-text-input id="stage_execution_reference" name="stage_execution_reference" type="text" class="mt-1 block w-full" :value="old('stage_execution_reference', $task?->stage_execution_reference ?? '')" />
                 <x-input-error class="mt-2" :messages="$errors->get('stage_execution_reference')" />
             </div>
 
@@ -293,13 +294,13 @@
 
             <div>
                 <x-input-label for="stage_execution_status" value="Status da execução" />
-                <x-text-input id="stage_execution_status" name="stage_execution_status" type="text" class="mt-1 block w-full" :value="old('stage_execution_status', $task->stage_execution_status ?? '')" />
+                <x-text-input id="stage_execution_status" name="stage_execution_status" type="text" class="mt-1 block w-full" :value="old('stage_execution_status', $task?->stage_execution_status ?? '')" />
                 <x-input-error class="mt-2" :messages="$errors->get('stage_execution_status')" />
             </div>
 
             <div>
                 <x-input-label for="stage_execution_agent" value="Agente responsável" />
-                <x-text-input id="stage_execution_agent" name="stage_execution_agent" type="text" class="mt-1 block w-full" :value="old('stage_execution_agent', $task->stage_execution_agent ?? '')" />
+                <x-text-input id="stage_execution_agent" name="stage_execution_agent" type="text" class="mt-1 block w-full" :value="old('stage_execution_agent', $task?->stage_execution_agent ?? '')" />
                 <x-input-error class="mt-2" :messages="$errors->get('stage_execution_agent')" />
             </div>
         </div>
@@ -307,7 +308,7 @@
         <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
             <div>
                 <x-input-label for="stage_execution_exit_code" value="Exit code" />
-                <x-text-input id="stage_execution_exit_code" name="stage_execution_exit_code" type="number" class="mt-1 block w-full" :value="old('stage_execution_exit_code', $task->stage_execution_exit_code ?? '')" />
+                <x-text-input id="stage_execution_exit_code" name="stage_execution_exit_code" type="number" class="mt-1 block w-full" :value="old('stage_execution_exit_code', $task?->stage_execution_exit_code ?? '')" />
                 <x-input-error class="mt-2" :messages="$errors->get('stage_execution_exit_code')" />
             </div>
 
@@ -326,27 +327,27 @@
 
         <div class="mt-6">
             <x-input-label for="stage_execution_summary" value="Resumo da execução" />
-            <textarea id="stage_execution_summary" name="stage_execution_summary" rows="4" class="mt-1 block w-full rounded-md border-amber-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">{{ old('stage_execution_summary', $task->stage_execution_summary ?? '') }}</textarea>
+            <textarea id="stage_execution_summary" name="stage_execution_summary" rows="4" class="mt-1 block w-full rounded-md border-amber-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">{{ old('stage_execution_summary', $task?->stage_execution_summary ?? '') }}</textarea>
             <x-input-error class="mt-2" :messages="$errors->get('stage_execution_summary')" />
         </div>
 
         <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div>
                 <x-input-label for="stage_execution_output" value="Saída estruturada (JSON)" />
-                <textarea id="stage_execution_output" name="stage_execution_output" rows="8" class="mt-1 block w-full rounded-md border-amber-300 font-mono text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">{{ $jsonFieldValue('stage_execution_output', $task->stage_execution_output ?? null) }}</textarea>
+                <textarea id="stage_execution_output" name="stage_execution_output" rows="8" class="mt-1 block w-full rounded-md border-amber-300 font-mono text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">{{ $jsonFieldValue('stage_execution_output', $task?->stage_execution_output ?? null) }}</textarea>
                 <x-input-error class="mt-2" :messages="$errors->get('stage_execution_output')" />
             </div>
 
             <div>
                 <x-input-label for="stage_execution_context" value="Contexto / ambiente (JSON)" />
-                <textarea id="stage_execution_context" name="stage_execution_context" rows="8" class="mt-1 block w-full rounded-md border-amber-300 font-mono text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">{{ $jsonFieldValue('stage_execution_context', $task->stage_execution_context ?? null) }}</textarea>
+                <textarea id="stage_execution_context" name="stage_execution_context" rows="8" class="mt-1 block w-full rounded-md border-amber-300 font-mono text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">{{ $jsonFieldValue('stage_execution_context', $task?->stage_execution_context ?? null) }}</textarea>
                 <x-input-error class="mt-2" :messages="$errors->get('stage_execution_context')" />
             </div>
         </div>
 
         <div class="mt-6">
             <x-input-label for="stage_execution_raw_output" value="Saída bruta" />
-            <textarea id="stage_execution_raw_output" name="stage_execution_raw_output" rows="8" class="mt-1 block w-full rounded-md border-amber-300 font-mono text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">{{ old('stage_execution_raw_output', $task->stage_execution_raw_output ?? '') }}</textarea>
+            <textarea id="stage_execution_raw_output" name="stage_execution_raw_output" rows="8" class="mt-1 block w-full rounded-md border-amber-300 font-mono text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500">{{ old('stage_execution_raw_output', $task?->stage_execution_raw_output ?? '') }}</textarea>
             <x-input-error class="mt-2" :messages="$errors->get('stage_execution_raw_output')" />
         </div>
 
@@ -358,27 +359,27 @@
                 <dl class="mt-4 grid grid-cols-1 gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Worker atual</dt>
-                        <dd class="mt-1 text-gray-800">{{ $task->claimed_by_worker ?? '—' }}</dd>
+                        <dd class="mt-1 text-gray-800">{{ $task?->claimed_by_worker ?? '—' }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Claim em</dt>
-                        <dd class="mt-1 text-gray-800">{{ $task->claimed_at?->format('d/m/Y H:i') ?? '—' }}</dd>
+                        <dd class="mt-1 text-gray-800">{{ $task?->claimed_at?->format('d/m/Y H:i') ?? '—' }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Último heartbeat</dt>
-                        <dd class="mt-1 text-gray-800">{{ $task->last_heartbeat_at?->format('d/m/Y H:i') ?? '—' }}</dd>
+                        <dd class="mt-1 text-gray-800">{{ $task?->last_heartbeat_at?->format('d/m/Y H:i') ?? '—' }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Lock até</dt>
-                        <dd class="mt-1 text-gray-800">{{ $task->locked_until?->format('d/m/Y H:i') ?? '—' }}</dd>
+                        <dd class="mt-1 text-gray-800">{{ $task?->locked_until?->format('d/m/Y H:i') ?? '—' }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Tentativas</dt>
-                        <dd class="mt-1 text-gray-800">{{ $task->attempts }} / {{ $task->max_attempts }}</dd>
+                        <dd class="mt-1 text-gray-800">{{ $task?->attempts }} / {{ $task?->max_attempts }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Executar após</dt>
-                        <dd class="mt-1 text-gray-800">{{ $task->run_after?->format('d/m/Y H:i') ?? '—' }}</dd>
+                        <dd class="mt-1 text-gray-800">{{ $task?->run_after?->format('d/m/Y H:i') ?? '—' }}</dd>
                     </div>
                 </dl>
             </div>
@@ -420,26 +421,26 @@
 
             <div>
                 <x-input-label for="handoff_confidence" value="Confiança (0.00 a 1.00)" />
-                <x-text-input id="handoff_confidence" name="handoff_confidence" type="number" min="0" max="1" step="0.01" class="mt-1 block w-full" :value="old('handoff_confidence', $task->handoff_confidence ?? '')" />
+                <x-text-input id="handoff_confidence" name="handoff_confidence" type="number" min="0" max="1" step="0.01" class="mt-1 block w-full" :value="old('handoff_confidence', $task?->handoff_confidence ?? '')" />
                 <x-input-error class="mt-2" :messages="$errors->get('handoff_confidence')" />
             </div>
 
             <div>
                 <x-input-label for="handoff_reason" value="Motivo do handoff" />
-                <x-text-input id="handoff_reason" name="handoff_reason" type="text" class="mt-1 block w-full" :value="old('handoff_reason', $task->handoff_reason ?? '')" />
+                <x-text-input id="handoff_reason" name="handoff_reason" type="text" class="mt-1 block w-full" :value="old('handoff_reason', $task?->handoff_reason ?? '')" />
                 <x-input-error class="mt-2" :messages="$errors->get('handoff_reason')" />
             </div>
         </div>
 
         <div class="mt-6">
             <x-input-label for="handoff_summary" value="Resumo do handoff" />
-            <textarea id="handoff_summary" name="handoff_summary" rows="4" class="mt-1 block w-full rounded-md border-violet-300 shadow-sm focus:border-violet-500 focus:ring-violet-500">{{ old('handoff_summary', $task->handoff_summary ?? '') }}</textarea>
+            <textarea id="handoff_summary" name="handoff_summary" rows="4" class="mt-1 block w-full rounded-md border-violet-300 shadow-sm focus:border-violet-500 focus:ring-violet-500">{{ old('handoff_summary', $task?->handoff_summary ?? '') }}</textarea>
             <x-input-error class="mt-2" :messages="$errors->get('handoff_summary')" />
         </div>
 
         <div class="mt-6">
             <x-input-label for="handoff_payload" value="Payload repassado (JSON)" />
-            <textarea id="handoff_payload" name="handoff_payload" rows="8" class="mt-1 block w-full rounded-md border-violet-300 font-mono text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500">{{ $jsonFieldValue('handoff_payload', $task->handoff_payload ?? null) }}</textarea>
+            <textarea id="handoff_payload" name="handoff_payload" rows="8" class="mt-1 block w-full rounded-md border-violet-300 font-mono text-sm shadow-sm focus:border-violet-500 focus:ring-violet-500">{{ $jsonFieldValue('handoff_payload', $task?->handoff_payload ?? null) }}</textarea>
             <x-input-error class="mt-2" :messages="$errors->get('handoff_payload')" />
         </div>
     </section>
