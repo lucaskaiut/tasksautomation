@@ -113,7 +113,11 @@
         </div>
 
         @if ($tasks->hasPages())
-            <div class="border-t border-slate-200 px-4 py-3">
+            <div class="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-slate-500">
+                    Exibindo {{ $tasks->firstItem() }} a {{ $tasks->lastItem() }} de {{ $tasks->total() }} tarefas.
+                </p>
+
                 {{ $tasks->links() }}
             </div>
         @endif

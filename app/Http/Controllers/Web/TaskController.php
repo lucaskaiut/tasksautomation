@@ -20,6 +20,8 @@ use Illuminate\View\View;
 
 class TaskController extends Controller
 {
+    private const TASKS_PER_PAGE = 20;
+
     public function __construct(
         private readonly TaskStatusPresenter $taskStatusPresenter,
         private readonly TaskRealtimeTokenService $taskRealtimeTokenService,
@@ -35,7 +37,7 @@ class TaskController extends Controller
         $tasks = Task::query()
             ->with(['project', 'creator', 'environmentProfile', 'lastReviewer'])
             ->latest()
-            ->paginate(20);
+            ->paginate(self::TASKS_PER_PAGE);
 
         $statusPresentations = $this->taskStatusPresenter->presentations();
         $realtimeConfig = $this->realtimeConfig(
