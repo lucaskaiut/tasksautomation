@@ -833,7 +833,7 @@ components:
           default: true
     TaskWriteRequest:
       type: object
-      required: [project_id, title, description, priority, implementation_type]
+      required: [project_id, title, description, priority, implementation_type, current_stage]
       properties:
         project_id:
           type: integer
@@ -843,6 +843,7 @@ components:
             - integer
             - 'null'
           minimum: 1
+          description: Quando informado, deve pertencer ao mesmo projeto enviado em `project_id`.
         title:
           type: string
           maxLength: 255
@@ -867,6 +868,141 @@ components:
         implementation_type:
           type: string
           enum: [feature, fix]
+        current_stage:
+          $ref: '#/components/schemas/TaskStageValue'
+        analysis_domain:
+          oneOf:
+            - $ref: '#/components/schemas/TaskAnalysisDomainValue'
+            - type: 'null'
+        analysis_confidence:
+          type:
+            - number
+            - 'null'
+          minimum: 0
+          maximum: 1
+        analysis_next_stage:
+          oneOf:
+            - $ref: '#/components/schemas/TaskStageValue'
+            - type: 'null'
+        analysis_summary:
+          type:
+            - string
+            - 'null'
+        analysis_evidence:
+          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        analysis_risks:
+          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        analysis_artifacts:
+          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        analysis_notes:
+          type:
+            - string
+            - 'null'
+        stage_execution_reference:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        stage_execution_stage:
+          oneOf:
+            - $ref: '#/components/schemas/TaskStageValue'
+            - type: 'null'
+        stage_execution_status:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        stage_execution_agent:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        stage_execution_summary:
+          type:
+            - string
+            - 'null'
+        stage_execution_output:
+          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        stage_execution_raw_output:
+          type:
+            - string
+            - 'null'
+        stage_execution_exit_code:
+          type:
+            - integer
+            - 'null'
+        stage_execution_started_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        stage_execution_finished_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        stage_execution_context:
+          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        handoff_from_stage:
+          oneOf:
+            - $ref: '#/components/schemas/TaskStageValue'
+            - type: 'null'
+        handoff_to_stage:
+          oneOf:
+            - $ref: '#/components/schemas/TaskStageValue'
+            - type: 'null'
+        handoff_reason:
+          type:
+            - string
+            - 'null'
+        handoff_confidence:
+          type:
+            - number
+            - 'null'
+          minimum: 0
+          maximum: 1
+        handoff_summary:
+          type:
+            - string
+            - 'null'
+        handoff_payload:
+          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
     ClaimTaskRequest:
       allOf:
         - $ref: '#/components/schemas/WorkerTaskRequest'
@@ -1013,6 +1149,150 @@ components:
           type:
             - string
             - 'null'
+    TaskStageValue:
+      type: string
+      enum: [analysis, implementation:backend, implementation:frontend, implementation:infra]
+      description: Estágio atual ou alvo da tarefa dentro do pipeline operacional.
+    TaskAnalysisDomainValue:
+      type: string
+      enum: [backend, frontend, infra]
+      description: Domínio técnico identificado durante a análise da tarefa.
+    TaskAnalysis:
+      type: object
+      required: [domain, confidence, next_stage, summary, evidence, risks, artifacts, notes]
+      properties:
+        domain:
+          oneOf:
+            - $ref: '#/components/schemas/TaskAnalysisDomainValue'
+            - type: 'null'
+        confidence:
+          type:
+            - number
+            - 'null'
+          minimum: 0
+          maximum: 1
+        next_stage:
+          oneOf:
+            - $ref: '#/components/schemas/TaskStageValue'
+            - type: 'null'
+        summary:
+          type:
+            - string
+            - 'null'
+        evidence:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        risks:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        artifacts:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        notes:
+          type:
+            - string
+            - 'null'
+    TaskStageExecution:
+      type: object
+      required: [reference, stage, status, agent, summary, output, raw_output, exit_code, started_at, finished_at, context]
+      properties:
+        reference:
+          type:
+            - string
+            - 'null'
+        stage:
+          oneOf:
+            - $ref: '#/components/schemas/TaskStageValue'
+            - type: 'null'
+        status:
+          type:
+            - string
+            - 'null'
+        agent:
+          type:
+            - string
+            - 'null'
+        summary:
+          type:
+            - string
+            - 'null'
+        output:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+        raw_output:
+          type:
+            - string
+            - 'null'
+        exit_code:
+          type:
+            - integer
+            - 'null'
+        started_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        finished_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        context:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
+    TaskHandoff:
+      type: object
+      required: [from_stage, to_stage, reason, confidence, summary, payload]
+      properties:
+        from_stage:
+          oneOf:
+            - $ref: '#/components/schemas/TaskStageValue'
+            - type: 'null'
+        to_stage:
+          oneOf:
+            - $ref: '#/components/schemas/TaskStageValue'
+            - type: 'null'
+        reason:
+          type:
+            - string
+            - 'null'
+        confidence:
+          type:
+            - number
+            - 'null'
+          minimum: 0
+          maximum: 1
+        summary:
+          type:
+            - string
+            - 'null'
+        payload:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: 'null'
     Task:
       type: object
       required:
@@ -1024,6 +1304,11 @@ components:
         - title
         - description
         - status
+        - implementation_type
+        - current_stage
+        - analysis
+        - stage_execution
+        - handoff
         - review_status
         - revision_count
         - priority
@@ -1105,6 +1390,14 @@ components:
         implementation_type:
           type: string
           enum: [feature, fix]
+        current_stage:
+          $ref: '#/components/schemas/TaskStageValue'
+        analysis:
+          $ref: '#/components/schemas/TaskAnalysis'
+        stage_execution:
+          $ref: '#/components/schemas/TaskStageExecution'
+        handoff:
+          $ref: '#/components/schemas/TaskHandoff'
         review_status:
           type:
             - string

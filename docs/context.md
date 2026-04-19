@@ -1,8 +1,8 @@
-# Arquitetura técnica — Gestor de tarefas (Fase 1)
+# Arquitetura técnica — Gestor de tarefas
 
 ## Objetivo da fase
 
-Esta primeira fase cobre **apenas a gestão das tarefas pelo painel web**, incluindo criação, edição, autenticação, relacionamentos necessários, API autenticada e testes automatizados de todas as rotas. O sistema deve ser construído em **Laravel 13**, com frontend em **Blade + Tailwind CSS 4**, autenticação web tradicional para o painel e autenticação da API via **Laravel Sanctum**. Laravel 13 mantém a estrutura convencional de rotas em `routes/web.php` e `routes/api.php`, e o Sanctum continua sendo a solução oficial leve para autenticação por token em APIs. Tailwind CSS 4 é a linha atual e tem integração orientada a Vite, com mudanças importantes em relação ao v3 e foco em navegadores modernos. ([Laravel][1])
+O sistema cobre a gestão de tarefas pelo painel web e pela API autenticada, incluindo criação, edição, ciclo operacional de execução e o modelo de estágios da tarefa. O projeto está em **Laravel 13**, com frontend em **Blade + Tailwind CSS** e autenticação da API via **Laravel Sanctum**. Laravel 13 mantém a estrutura convencional de rotas em `routes/web.php` e `routes/api.php`, e o Sanctum continua sendo a solução oficial leve para autenticação por token em APIs. ([Laravel][1])
 
 ---
 
@@ -18,6 +18,10 @@ Esta primeira fase cobre **apenas a gestão das tarefas pelo painel web**, inclu
 * edição de tarefas
 * listagem de projetos
 * listagem de tarefas
+* classificação e acompanhamento da tarefa por estágio
+* registro de análise técnica da tarefa
+* registro de execução técnica por estágio
+* handoff de contexto entre estágios
 * relacionamento entre tarefas e projetos
 * relacionamento entre tarefas e usuário criador
 * estrutura inicial para regras globais do projeto
@@ -170,10 +174,14 @@ A tarefa é a unidade de trabalho gerenciada pelo painel.
 * listar tarefa
 * vincular a um projeto
 * armazenar título, descrição, entregáveis e restrições
+* registrar o estágio atual da tarefa
+* armazenar a análise técnica e o próximo estágio sugerido
+* registrar contexto de execução do estágio
+* armazenar handoff entre estágios
 
 ### Observação
 
-Mesmo na fase 1, já vale estruturar a tarefa pensando nas fases seguintes, para evitar refactor desnecessário.
+O fluxo atual já separa a triagem técnica (`analysis`) da execução do estágio (`stage_execution`) e da transferência de contexto (`handoff`).
 
 ---
 
@@ -195,7 +203,7 @@ Perfis de ambiente do projeto, como `light`, `moderate`, `full`.
 
 ### Task
 
-Tarefa cadastrada no painel.
+Tarefa cadastrada no painel, com estágio operacional, análise técnica, execução do estágio e handoff entre etapas.
 
 ---
 
@@ -301,6 +309,33 @@ Campos recomendados:
 * `constraints` longText nullable
 * `status`
 * `priority`
+* `implementation_type`
+* `current_stage`
+* `analysis_domain` nullable
+* `analysis_confidence` nullable
+* `analysis_next_stage` nullable
+* `analysis_summary` nullable
+* `analysis_evidence` nullable json
+* `analysis_risks` nullable json
+* `analysis_artifacts` nullable json
+* `analysis_notes` nullable
+* `stage_execution_reference` nullable
+* `stage_execution_stage` nullable
+* `stage_execution_status` nullable
+* `stage_execution_agent` nullable
+* `stage_execution_summary` nullable
+* `stage_execution_output` nullable json
+* `stage_execution_raw_output` nullable
+* `stage_execution_exit_code` nullable
+* `stage_execution_started_at` nullable
+* `stage_execution_finished_at` nullable
+* `stage_execution_context` nullable json
+* `handoff_from_stage` nullable
+* `handoff_to_stage` nullable
+* `handoff_reason` nullable
+* `handoff_confidence` nullable
+* `handoff_summary` nullable
+* `handoff_payload` nullable json
 * timestamps
 
 ### Sugestão de enums lógicos
@@ -317,6 +352,19 @@ Na fase 1, isso já basta.
 * `low`
 * `medium`
 * `high`
+
+**current_stage**
+
+* `analysis`
+* `implementation:backend`
+* `implementation:frontend`
+* `implementation:infra`
+
+**analysis_domain**
+
+* `backend`
+* `frontend`
+* `infra`
 
 ### Observações
 
@@ -349,7 +397,16 @@ Na fase 1, isso já basta.
 
 ## Em `Task`
 
-* usar enums PHP para `status` e `priority`, ou casts customizados se preferir maior robustez
+* usar enums PHP para `status`, `priority`, `implementation_type`, `current_stage` e `analysis_domain`
+* `analysis_evidence` => `array`
+* `analysis_risks` => `array`
+* `analysis_artifacts` => `array`
+* `stage_execution_output` => `array`
+* `stage_execution_exit_code` => `integer`
+* `stage_execution_started_at` => `datetime`
+* `stage_execution_finished_at` => `datetime`
+* `stage_execution_context` => `array`
+* `handoff_payload` => `array`
 
 ---
 
