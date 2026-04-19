@@ -104,8 +104,8 @@
             </dl>
         </div>
 
-        <div class="grid gap-8 xl:grid-cols-3">
-            <section class="rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm">
+        <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <section class="min-w-0 rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
                     <h3 class="text-lg font-semibold text-slate-950">Dados de análise</h3>
                     @if ($task->analysis_domain)
@@ -157,7 +157,7 @@
                 </dl>
             </section>
 
-            <section class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+            <section class="min-w-0 rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
                     <h3 class="text-lg font-semibold text-slate-950">Dados de execução</h3>
                     @if ($task->stage_execution_stage)
@@ -217,7 +217,7 @@
                 </dl>
             </section>
 
-            <section class="rounded-3xl border border-violet-200 bg-white p-6 shadow-sm">
+            <section class="min-w-0 rounded-3xl border border-violet-200 bg-white p-6 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
                     <h3 class="text-lg font-semibold text-slate-950">Dados de handoff</h3>
                     @if ($task->handoff_to_stage)
