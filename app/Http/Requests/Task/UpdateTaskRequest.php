@@ -44,6 +44,47 @@ class UpdateTaskRequest extends FormRequest
      */
     public function rules(): array
     {
+        $rules = $this->putRules();
+
+        if ($this->isMethod('PATCH')) {
+            return $this->rulesWithSometimes($rules);
+        }
+
+        return $rules;
+    }
+
+    public function taskData(): TaskData
+    {
+        $task = $this->route('task');
+        assert($task instanceof Task);
+
+        if ($this->isMethod('PATCH')) {
+            return TaskData::forPartialUpdate($task, $this->validated());
+        }
+
+        return TaskData::fromValidated($this->validated());
+    }
+
+    /**
+     * @param  array<string, array<int, mixed>>  $rules
+     * @return array<string, array<int, mixed>>
+     */
+    private function rulesWithSometimes(array $rules): array
+    {
+        $out = [];
+
+        foreach ($rules as $key => $fieldRules) {
+            $out[$key] = array_merge(['sometimes'], $fieldRules);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function putRules(): array
+    {
         return [
             'project_id' => ['required', 'integer', 'exists:projects,id'],
             'environment_profile_id' => ['nullable', 'integer', 'exists:project_environment_profiles,id'],
@@ -81,11 +122,6 @@ class UpdateTaskRequest extends FormRequest
             'handoff_summary' => ['nullable', 'string'],
             'handoff_payload' => ['nullable', 'json'],
         ];
-    }
-
-    public function taskData(): TaskData
-    {
-        return TaskData::fromValidated($this->validated());
     }
 
     /**

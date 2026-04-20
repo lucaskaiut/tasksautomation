@@ -60,7 +60,7 @@ services:
     working_dir: /var/www/html
     command: ["sh", "-lc", "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"]
     ports:
-      - "5173:5173"
+      - "5174:5173"
     volumes:
       - ./:/var/www/html
       - node_modules:/var/www/html/node_modules

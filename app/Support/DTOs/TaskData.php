@@ -2,6 +2,7 @@
 
 namespace App\Support\DTOs;
 
+use App\Models\Task;
 use App\Support\Enums\TaskAnalysisDomain;
 use App\Support\Enums\TaskImplementationType;
 use App\Support\Enums\TaskPriority;
@@ -59,6 +60,11 @@ final readonly class TaskData
     /**
      * @param  array<string,mixed>  $validated
      */
+    public static function forPartialUpdate(Task $task, array $validated): self
+    {
+        return self::fromValidated(array_merge(self::baselinePayloadFromTask($task), $validated));
+    }
+
     public static function fromValidated(array $validated): self
     {
         return new self(
@@ -116,6 +122,50 @@ final readonly class TaskData
             handoffSummary: $validated['handoff_summary'] ?? null,
             handoffPayload: self::decodeNullableJson($validated['handoff_payload'] ?? null),
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function baselinePayloadFromTask(Task $task): array
+    {
+        return [
+            'project_id' => $task->project_id,
+            'environment_profile_id' => $task->environment_profile_id,
+            'title' => $task->title,
+            'description' => $task->description,
+            'deliverables' => $task->deliverables,
+            'constraints' => $task->constraints,
+            'status' => $task->status->value,
+            'priority' => $task->priority->value,
+            'implementation_type' => $task->implementation_type->value,
+            'current_stage' => $task->current_stage->value,
+            'analysis_domain' => $task->analysis_domain?->value,
+            'analysis_confidence' => $task->analysis_confidence,
+            'analysis_next_stage' => $task->analysis_next_stage?->value,
+            'analysis_summary' => $task->analysis_summary,
+            'analysis_evidence' => $task->analysis_evidence,
+            'analysis_risks' => $task->analysis_risks,
+            'analysis_artifacts' => $task->analysis_artifacts,
+            'analysis_notes' => $task->analysis_notes,
+            'stage_execution_reference' => $task->stage_execution_reference,
+            'stage_execution_stage' => $task->stage_execution_stage?->value,
+            'stage_execution_status' => $task->stage_execution_status,
+            'stage_execution_agent' => $task->stage_execution_agent,
+            'stage_execution_summary' => $task->stage_execution_summary,
+            'stage_execution_output' => $task->stage_execution_output,
+            'stage_execution_raw_output' => $task->stage_execution_raw_output,
+            'stage_execution_exit_code' => $task->stage_execution_exit_code,
+            'stage_execution_started_at' => $task->stage_execution_started_at?->toIso8601String(),
+            'stage_execution_finished_at' => $task->stage_execution_finished_at?->toIso8601String(),
+            'stage_execution_context' => $task->stage_execution_context,
+            'handoff_from_stage' => $task->handoff_from_stage?->value,
+            'handoff_to_stage' => $task->handoff_to_stage?->value,
+            'handoff_reason' => $task->handoff_reason,
+            'handoff_confidence' => $task->handoff_confidence,
+            'handoff_summary' => $task->handoff_summary,
+            'handoff_payload' => $task->handoff_payload,
+        ];
     }
 
     /**

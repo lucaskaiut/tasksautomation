@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\Task;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Enums\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -55,6 +56,45 @@ class UpdateTaskTest extends TestCase
             'analysis_domain' => 'frontend',
             'handoff_to_stage' => 'implementation:frontend',
         ]);
+    }
+
+    public function test_patch_can_update_only_status(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test')->plainTextToken;
+
+        $project = Project::factory()->create();
+        $task = Task::factory()->create([
+            'project_id' => $project->id,
+            'status' => TaskStatus::Pending,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/tasks/'.$task->id, [
+                'status' => TaskStatus::Running->value,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status', TaskStatus::Running->value);
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'status' => TaskStatus::Running->value,
+        ]);
+    }
+
+    public function test_patch_validates_fields_that_are_sent(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test')->plainTextToken;
+
+        $task = Task::factory()->create();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/tasks/'.$task->id, [
+                'priority' => 'not-a-valid-priority',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['priority']);
     }
 
     public function test_update_validation_errors_return_422(): void

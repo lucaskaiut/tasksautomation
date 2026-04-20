@@ -13,4 +13,7 @@ return [
     'auth' => [
         'token_ttl_seconds' => (int) env('TASKS_REALTIME_TOKEN_TTL_SECONDS', 28800),
     ],
+    'client' => [
+        'public_ws_origin' => env('TASKS_REALTIME_PUBLIC_WS_ORIGIN'),
+    ],
 ];
