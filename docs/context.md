@@ -91,7 +91,8 @@ Os feature tests em `tests/Feature/` cobrem fluxos web e API (autenticação, pr
 | Ficheiro | Conteúdo |
 |----------|-----------|
 | `docs/task-stage-flow.md` | Estágios da tarefa, histórico e endpoint `change-stage` |
-| `openapi.yml` | Endpoints, esquemas e códigos de resposta da API |
+| `public/openapi.yml` | Endpoints, esquemas e códigos de resposta da API |
+| `docs/WEBSOCKET_FRONTEND.md` | Websocket para atualização em tempo real das tarefas |
 
 ---
 
