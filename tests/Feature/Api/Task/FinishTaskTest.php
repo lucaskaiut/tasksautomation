@@ -68,6 +68,53 @@ class FinishTaskTest extends TestCase
         ]);
     }
 
+    public function test_worker_can_finish_with_pending_to_release_task_to_queue(): void
+    {
+        Carbon::setTestNow('2026-04-16 12:00:00');
+
+        $user = User::factory()->create();
+        $token = $user->createToken('test')->plainTextToken;
+        $project = Project::factory()->create(['is_active' => true]);
+
+        $task = Task::factory()->create([
+            'project_id' => $project->id,
+            'status' => TaskStatus::Running,
+            'priority' => TaskPriority::High,
+            'claimed_by_worker' => 'worker-1',
+            'locked_until' => Carbon::now()->addMinutes(5),
+        ]);
+
+        TaskExecution::factory()->create([
+            'task_id' => $task->id,
+            'worker_id' => 'worker-1',
+            'status' => TaskExecutionStatus::Running,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson("/api/tasks/{$task->id}/finish", [
+                'worker_id' => 'worker-1',
+                'status' => 'pending',
+                'execution_summary' => 'Análise concluída, aguardando implementação.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.claimed_by_worker', null);
+
+        $task->refresh();
+
+        $this->assertEquals(TaskStatus::Pending, $task->status);
+        $this->assertNull($task->claimed_by_worker);
+        $this->assertNull($task->locked_until);
+        $this->assertNull($task->finished_at);
+        $this->assertEquals('Análise concluída, aguardando implementação.', $task->execution_summary);
+
+        $this->assertDatabaseHas('task_executions', [
+            'task_id' => $task->id,
+            'worker_id' => 'worker-1',
+            'status' => TaskExecutionStatus::Done->value,
+        ]);
+    }
+
     public function test_worker_cannot_finish_task_claimed_by_another_worker(): void
     {
         $user = User::factory()->create();
@@ -145,7 +192,7 @@ class FinishTaskTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson("/api/tasks/{$task->id}/finish", [
                 'worker_id' => '',
-                'status' => 'pending',
+                'status' => 'not-a-status',
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['worker_id', 'status']);

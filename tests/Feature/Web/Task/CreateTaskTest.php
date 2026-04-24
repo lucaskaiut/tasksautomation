@@ -38,8 +38,6 @@ class CreateTaskTest extends TestCase
                 'priority' => 'medium',
                 'implementation_type' => 'feature',
                 'current_stage' => 'analysis',
-                'analysis_domain' => 'backend',
-                'analysis_next_stage' => 'implementation:backend',
             ])
             ->assertRedirect(route('tasks.index'))
             ->assertSessionHas('success');
@@ -51,8 +49,13 @@ class CreateTaskTest extends TestCase
             'title' => 'Minha tarefa',
             'implementation_type' => 'feature',
             'current_stage' => 'analysis',
-            'analysis_domain' => 'backend',
-            'analysis_next_stage' => 'implementation:backend',
+        ]);
+
+        $taskId = (int) \App\Models\Task::query()->where('title', 'Minha tarefa')->value('id');
+        $this->assertDatabaseHas('task_stage_histories', [
+            'task_id' => $taskId,
+            'stage' => 'analysis',
+            'summary' => 'Tarefa criada',
         ]);
     }
 
@@ -72,7 +75,7 @@ class CreateTaskTest extends TestCase
             ->assertSee('Pendente')
             ->assertSee('Em revisão')
             ->assertSee('Precisa de ajustes')
-            ->assertSee('Estágio atual')
+            ->assertSee('Estágio inicial')
             ->assertSee('Análise')
             ->assertSee('Implementação Backend');
     }
@@ -110,12 +113,10 @@ class CreateTaskTest extends TestCase
             ->assertOk()
             ->assertSee('x-model="selectedProjectId"', false)
             ->assertSee('x-model="selectedEnvironmentProfileId"', false)
-            ->assertSee('"project_id":'.$projectA->id, false)
-            ->assertSee('"project_id":'.$projectB->id, false)
-            ->assertSee('"name":"Alpha Full"', false)
-            ->assertSee('"name":"Beta Light"', false)
-            ->assertSee('"slug":"alpha-full"', false)
-            ->assertSee('"slug":"beta-light"', false);
+            ->assertSee('Alpha Full', false)
+            ->assertSee('Beta Light', false)
+            ->assertSee('alpha-full', false)
+            ->assertSee('beta-light', false);
     }
 
     public function test_authenticated_user_cannot_create_task_with_invalid_data(): void

@@ -25,6 +25,7 @@ class FinishTaskRequest extends FormRequest
                 'required',
                 'string',
                 Rule::in([
+                    TaskStatus::Pending->value,
                     TaskStatus::Done->value,
                     TaskStatus::Failed->value,
                     TaskStatus::Review->value,
@@ -42,4 +43,3 @@ class FinishTaskRequest extends FormRequest
         ];
     }
 }
-

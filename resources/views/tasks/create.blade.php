@@ -2,7 +2,7 @@
 
 @section('title', 'Nova tarefa')
 @section('page-title', 'Nova tarefa')
-@section('page-description', 'Registre a tarefa já preparada para o fluxo por estágios, análise, execução e handoff.')
+@section('page-description', 'Registre a tarefa com estágio inicial; as mudanças de estágio ficam no histórico.')
 
 @section('content')
     <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

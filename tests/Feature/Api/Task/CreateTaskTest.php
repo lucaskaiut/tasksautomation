@@ -34,19 +34,13 @@ class CreateTaskTest extends TestCase
                 'priority' => 'low',
                 'implementation_type' => 'feature',
                 'current_stage' => 'analysis',
-                'analysis_domain' => 'backend',
-                'analysis_confidence' => 0.92,
-                'analysis_next_stage' => 'implementation:backend',
-                'analysis_summary' => 'API ready for backend.',
-                'analysis_evidence' => ['entrypoint' => 'TaskController'],
             ])
             ->assertCreated()
             ->assertJsonPath('data.title', 'API Task')
             ->assertJsonPath('data.implementation_type', 'feature')
             ->assertJsonPath('data.current_stage', 'analysis')
-            ->assertJsonPath('data.analysis.domain', 'backend')
-            ->assertJsonPath('data.analysis.next_stage', 'implementation:backend')
-            ->assertJsonPath('data.analysis.evidence.entrypoint', 'TaskController');
+            ->assertJsonCount(1, 'data.stage_history')
+            ->assertJsonPath('data.stage_history.0.summary', 'Tarefa criada');
 
         $this->assertDatabaseHas('tasks', [
             'project_id' => $project->id,
@@ -55,7 +49,6 @@ class CreateTaskTest extends TestCase
             'title' => 'API Task',
             'implementation_type' => 'feature',
             'current_stage' => 'analysis',
-            'analysis_domain' => 'backend',
         ]);
     }
 

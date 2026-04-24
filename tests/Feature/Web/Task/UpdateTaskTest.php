@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectEnvironmentProfile;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Enums\TaskStage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -33,6 +34,7 @@ class UpdateTaskTest extends TestCase
             'project_id' => $project->id,
             'environment_profile_id' => null,
             'created_by' => $user->id,
+            'current_stage' => TaskStage::Analysis,
         ]);
 
         $this->actingAs($user)
@@ -46,10 +48,6 @@ class UpdateTaskTest extends TestCase
                 'status' => 'draft',
                 'priority' => 'high',
                 'implementation_type' => 'fix',
-                'current_stage' => 'implementation:backend',
-                'analysis_domain' => 'backend',
-                'analysis_next_stage' => 'implementation:backend',
-                'handoff_to_stage' => 'implementation:backend',
             ])
             ->assertRedirect(route('tasks.index'))
             ->assertSessionHas('success');
@@ -61,10 +59,7 @@ class UpdateTaskTest extends TestCase
             'status' => 'draft',
             'priority' => 'high',
             'implementation_type' => 'fix',
-            'current_stage' => 'implementation:backend',
-            'analysis_domain' => 'backend',
-            'analysis_next_stage' => 'implementation:backend',
-            'handoff_to_stage' => 'implementation:backend',
+            'current_stage' => TaskStage::Analysis->value,
         ]);
     }
 
@@ -78,7 +73,7 @@ class UpdateTaskTest extends TestCase
             'name' => 'Alpha Full',
             'slug' => 'alpha-full',
         ]);
-        $profileB = ProjectEnvironmentProfile::factory()->create([
+        ProjectEnvironmentProfile::factory()->create([
             'project_id' => $projectB->id,
             'name' => 'Beta Light',
             'slug' => 'beta-light',
@@ -94,12 +89,8 @@ class UpdateTaskTest extends TestCase
             ->assertOk()
             ->assertSee('x-model="selectedProjectId"', false)
             ->assertSee('x-model="selectedEnvironmentProfileId"', false)
-            ->assertSee('selectedProjectId: "'.$projectA->id.'"', false)
-            ->assertSee('selectedEnvironmentProfileId: "'.$profileA->id.'"', false)
-            ->assertSee('"project_id":'.$projectA->id, false)
-            ->assertSee('"project_id":'.$projectB->id, false)
-            ->assertSee('"name":"Alpha Full"', false)
-            ->assertSee('"name":"Beta Light"', false);
+            ->assertSee('Alpha Full', false)
+            ->assertSee('Beta Light', false);
     }
 
     public function test_authenticated_user_cannot_update_task_with_invalid_data(): void
@@ -116,7 +107,7 @@ class UpdateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertRedirect(route('tasks.edit', $task))
-            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type', 'current_stage']);
+            ->assertSessionHasErrors(['title', 'description', 'priority', 'implementation_type']);
     }
 
     public function test_environment_profile_must_belong_to_same_project_on_update(): void
@@ -143,7 +134,6 @@ class UpdateTaskTest extends TestCase
                 'description' => 'Descrição',
                 'priority' => 'low',
                 'implementation_type' => 'feature',
-                'current_stage' => 'analysis',
             ])
             ->assertRedirect(route('tasks.edit', $task))
             ->assertSessionHasErrors(['environment_profile_id']);

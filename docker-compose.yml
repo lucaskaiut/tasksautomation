@@ -42,6 +42,11 @@ services:
     depends_on:
       - app
       - websocket
+    networks:
+      tasksautomation-network:
+        aliases:
+          - tasksautomation-nginx
+      default:
 
   db:
     image: mysql:8.4
@@ -69,3 +74,7 @@ volumes:
   dbdata:
   vendor:
   node_modules:
+
+networks:
+  tasksautomation-network:
+    external: true

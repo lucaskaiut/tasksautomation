@@ -77,6 +77,31 @@ final class FinishTaskService
                 'finished_at' => $now,
             ];
 
+            if ($requestedStatus === TaskStatus::Pending) {
+                $task->forceFill([
+                    'status' => TaskStatus::Pending,
+                    'review_status' => null,
+                    'claimed_by_worker' => null,
+                    'claimed_at' => null,
+                    'started_at' => null,
+                    'finished_at' => null,
+                    'last_heartbeat_at' => null,
+                    'locked_until' => null,
+                    'failure_reason' => null,
+                    'execution_summary' => $executionSummary,
+                ]);
+                $task->save();
+
+                $execution->forceFill(array_merge($executionFill, [
+                    'status' => TaskExecutionStatus::Done,
+                    'summary' => $executionSummary,
+                    'failure_reason' => null,
+                ]));
+                $execution->save();
+
+                return $task->refresh();
+            }
+
             if ($requestedStatus === TaskStatus::Done || $requestedStatus === TaskStatus::Review) {
                 $task->forceFill([
                     'status' => TaskStatus::Review,

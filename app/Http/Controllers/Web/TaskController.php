@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Task\ChangeTaskStageRequest;
 use App\Http\Requests\Task\StoreTaskRequest;
 use App\Http\Requests\Task\UpdateTaskRequest;
 use App\Models\Project;
 use App\Models\ProjectEnvironmentProfile;
 use App\Models\Task;
 use App\Models\TaskExecution;
+use App\Services\Task\ChangeTaskStageService;
 use App\Services\Task\CreateTaskService;
 use App\Services\Task\UpdateTaskService;
 use App\Support\Enums\TaskExecutionStatus;
@@ -62,6 +64,7 @@ class TaskController extends Controller
             'environmentProfile',
             'creator',
             'lastReviewer',
+            'stageHistories',
             'executions' => fn ($query) => $query->with(['review.author'])->orderByDesc('id'),
             'reviews' => fn ($query) => $query->with(['author', 'taskExecution'])->orderByDesc('id'),
         ]);
@@ -150,6 +153,15 @@ class TaskController extends Controller
         return redirect()
             ->route('tasks.index')
             ->with('success', 'Tarefa atualizada com sucesso.');
+    }
+
+    public function changeStage(ChangeTaskStageRequest $request, Task $task, ChangeTaskStageService $service): RedirectResponse
+    {
+        $service->handle($task, $request->toStage(), $request->summaryText());
+
+        return redirect()
+            ->route('tasks.show', $task)
+            ->with('success', 'Estágio da tarefa atualizado com sucesso.');
     }
 
     /**

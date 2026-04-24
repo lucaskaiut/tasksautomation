@@ -44,6 +44,7 @@ class TaskStatusRealtimeTest extends TestCase
                 'status' => TaskStatus::Pending->value,
                 'priority' => TaskPriority::Medium->value,
                 'implementation_type' => 'feature',
+                'current_stage' => 'analysis',
             ])
             ->assertRedirect(route('tasks.index'));
     }

@@ -19,8 +19,6 @@
     @php($statusPresentation = $statusPresentations[$task->status->value] ?? ['label' => $task->status->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
     @php($stagePresentation = $stagePresentations[$task->current_stage->value] ?? ['label' => $task->current_stage->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
     @php($reviewStatusPresentation = $task->review_status ? ($reviewStatusPresentations[$task->review_status->value] ?? ['label' => $task->review_status->value, 'badge_classes' => 'bg-slate-100 text-slate-700']) : null)
-    @php($jsonFlags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-    @php($formatJson = static fn (mixed $value): string => is_array($value) ? (json_encode($value, $jsonFlags) ?: '—') : '—')
     <script type="application/json" id="task-stream-config">@json($realtimeConfig)</script>
 
     <div class="space-y-8" data-task-show data-task-id="{{ $task->id }}">
@@ -104,158 +102,69 @@
             </dl>
         </div>
 
-        <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            <section class="min-w-0 rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <h3 class="text-lg font-semibold text-slate-950">Dados de análise</h3>
-                    @if ($task->analysis_domain)
-                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                            {{ $task->analysis_domain->label() }}
-                        </span>
-                    @endif
-                </div>
+        <div class="rounded-3xl border border-sky-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-slate-950">Evolução de estágios</h3>
+            <p class="mt-1 text-sm text-slate-500">Histórico de transições com resumo. Cada alteração adiciona uma linha.</p>
 
-                <dl class="mt-4 space-y-4 text-sm">
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Domínio identificado</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->analysis_domain?->label() ?? '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Confiança</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->analysis_confidence !== null ? number_format($task->analysis_confidence, 2, ',', '.') : '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Próximo estágio sugerido</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->analysis_next_stage?->label() ?? '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Resumo</dt>
-                        <dd class="mt-1 whitespace-pre-wrap text-slate-900">{{ $task->analysis_summary ?: '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</dt>
-                        <dd class="mt-1 whitespace-pre-wrap text-slate-900">{{ $task->analysis_notes ?: '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Evidências</dt>
-                        <dd class="mt-1">
-                            <pre class="overflow-x-auto rounded-2xl bg-slate-950 p-3 text-xs text-slate-100">{{ $formatJson($task->analysis_evidence) }}</pre>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Riscos</dt>
-                        <dd class="mt-1">
-                            <pre class="overflow-x-auto rounded-2xl bg-slate-950 p-3 text-xs text-slate-100">{{ $formatJson($task->analysis_risks) }}</pre>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Artefatos</dt>
-                        <dd class="mt-1">
-                            <pre class="overflow-x-auto rounded-2xl bg-slate-950 p-3 text-xs text-slate-100">{{ $formatJson($task->analysis_artifacts) }}</pre>
-                        </dd>
-                    </div>
-                </dl>
-            </section>
+            <div class="mt-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">#</th>
+                            <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Estágio</th>
+                            <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Resumo</th>
+                            <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">Quando</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse ($task->stageHistories as $entry)
+                            @php($entryStage = $stagePresentations[$entry->stage->value] ?? ['label' => $entry->stage->value, 'badge_classes' => 'bg-slate-100 text-slate-700'])
+                            <tr>
+                                <td class="px-3 py-2 font-mono text-xs text-slate-600">{{ $entry->id }}</td>
+                                <td class="px-3 py-2">
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $entryStage['badge_classes'] }}">
+                                        {{ $entryStage['label'] }}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 max-w-prose whitespace-pre-wrap text-slate-800">{{ $entry->summary }}</td>
+                                <td class="px-3 py-2 text-xs text-slate-500">{{ $entry->created_at->format('d/m/Y H:i') }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-3 py-4 text-slate-500">Sem registo ainda.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
 
-            <section class="min-w-0 rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <h3 class="text-lg font-semibold text-slate-950">Dados de execução</h3>
-                    @if ($task->stage_execution_stage)
-                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $stagePresentations[$task->stage_execution_stage->value]['badge_classes'] ?? 'bg-slate-100 text-slate-700' }}">
-                            {{ $task->stage_execution_stage->label() }}
-                        </span>
-                    @endif
-                </div>
-
-                <dl class="mt-4 space-y-4 text-sm">
+            <div class="mt-8 border-t border-slate-200 pt-6">
+                <h4 class="text-sm font-semibold text-slate-900">Registar transição de estágio</h4>
+                <form method="post" action="{{ route('tasks.change-stage', $task) }}" class="mt-4 space-y-4 max-w-2xl">
+                    @csrf
                     <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Identificador</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->stage_execution_reference ?: '—' }}</dd>
+                        <label for="change_stage" class="block text-sm font-medium text-slate-700">Novo estágio</label>
+                        <select id="change_stage" name="stage" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
+                            @foreach ($stagePresentations as $stageValue => $s)
+                                <option value="{{ $stageValue }}" @selected(old('stage', $task->current_stage->value) === $stageValue)>
+                                    {{ $s['label'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <x-input-error :messages="$errors->get('stage')" class="mt-2" />
                     </div>
                     <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Status</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->stage_execution_status ?: '—' }}</dd>
+                        <label for="change_stage_summary" class="block text-sm font-medium text-slate-700">Resumo</label>
+                        <textarea id="change_stage_summary" name="summary" rows="4" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500" required placeholder="Descreva o contexto desta transição.">{{ old('summary') }}</textarea>
+                        <x-input-error :messages="$errors->get('summary')" class="mt-2" />
                     </div>
                     <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Agente</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->stage_execution_agent ?: '—' }}</dd>
+                        <button type="submit" class="inline-flex items-center rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500">
+                            Atualizar estágio
+                        </button>
                     </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Exit code</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->stage_execution_exit_code ?? '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Início</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->stage_execution_started_at?->format('d/m/Y H:i') ?? '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Fim</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->stage_execution_finished_at?->format('d/m/Y H:i') ?? '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Resumo</dt>
-                        <dd class="mt-1 whitespace-pre-wrap text-slate-900">{{ $task->stage_execution_summary ?: '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Saída estruturada</dt>
-                        <dd class="mt-1">
-                            <pre class="overflow-x-auto rounded-2xl bg-slate-950 p-3 text-xs text-slate-100">{{ $formatJson($task->stage_execution_output) }}</pre>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Contexto / ambiente</dt>
-                        <dd class="mt-1">
-                            <pre class="overflow-x-auto rounded-2xl bg-slate-950 p-3 text-xs text-slate-100">{{ $formatJson($task->stage_execution_context) }}</pre>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Saída bruta</dt>
-                        <dd class="mt-1">
-                            <pre class="overflow-x-auto rounded-2xl bg-slate-950 p-3 text-xs text-slate-100">{{ $task->stage_execution_raw_output ?: '—' }}</pre>
-                        </dd>
-                    </div>
-                </dl>
-            </section>
-
-            <section class="min-w-0 rounded-3xl border border-violet-200 bg-white p-6 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <h3 class="text-lg font-semibold text-slate-950">Dados de handoff</h3>
-                    @if ($task->handoff_to_stage)
-                        <span class="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-semibold text-violet-800">
-                            Encaminhada
-                        </span>
-                    @endif
-                </div>
-
-                <dl class="mt-4 space-y-4 text-sm">
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Origem</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->handoff_from_stage?->label() ?? '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Destino</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->handoff_to_stage?->label() ?? '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Motivo</dt>
-                        <dd class="mt-1 whitespace-pre-wrap text-slate-900">{{ $task->handoff_reason ?: '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Confiança</dt>
-                        <dd class="mt-1 text-slate-900">{{ $task->handoff_confidence !== null ? number_format($task->handoff_confidence, 2, ',', '.') : '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Resumo</dt>
-                        <dd class="mt-1 whitespace-pre-wrap text-slate-900">{{ $task->handoff_summary ?: '—' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Payload</dt>
-                        <dd class="mt-1">
-                            <pre class="overflow-x-auto rounded-2xl bg-slate-950 p-3 text-xs text-slate-100">{{ $formatJson($task->handoff_payload) }}</pre>
-                        </dd>
-                    </div>
-                </dl>
-            </section>
+                </form>
+            </div>
         </div>
 
         @if ($reviewableExecution)

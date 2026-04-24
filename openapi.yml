@@ -299,7 +299,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskWriteRequest'
+              $ref: '#/components/schemas/TaskCreateRequest'
             examples:
               default:
                 value:
@@ -312,6 +312,7 @@ paths:
                   status: pending
                   priority: high
                   implementation_type: fix
+                  current_stage: analysis
       responses:
         '201':
           description: Tarefa criada com sucesso.
@@ -358,6 +359,8 @@ paths:
       description: |
         Atualiza uma tarefa existente. A API aceita `PUT` e `PATCH` na mesma rota.
 
+        O estágio operacional (`current_stage`) **não** é alterado por este endpoint; use `POST /api/tasks/{task}/change-stage`.
+
         Caso de uso:
         - repriorizar uma tarefa;
         - corrigir descrição, entregáveis ou vínculo de projeto.
@@ -368,7 +371,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskWriteRequest'
+              $ref: '#/components/schemas/TaskUpdateRequest'
       responses:
         '200':
           description: Tarefa atualizada com sucesso.
@@ -388,7 +391,7 @@ paths:
         - bearerAuth: []
       operationId: updateTask
       summary: Atualizar tarefa parcialmente
-      description: Semântica equivalente ao `PUT` implementado pela aplicação.
+      description: Semântica equivalente ao `PUT` implementado pela aplicação. O estágio operacional só muda via `POST /api/tasks/{task}/change-stage`.
       parameters:
         - $ref: '#/components/parameters/TaskId'
       requestBody:
@@ -396,7 +399,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskWriteRequest'
+              $ref: '#/components/schemas/TaskUpdateRequest'
       responses:
         '200':
           description: Tarefa atualizada com sucesso.
@@ -517,6 +520,7 @@ paths:
         Regras principais:
         - exige que `worker_id` seja o dono atual da tarefa;
         - só aceita tarefas em `claimed` ou `running`;
+        - `status=pending` encerra a execução aberta com sucesso, devolve a tarefa à fila (`pending`) e limpa o claim — para handoffs de fase (ex.: após análise) sem marcar a tarefa como aguardando revisão funcional;
         - `status=done` ou `status=review` colocam a tarefa em `review` com `review_status=pending_review`;
         - `status=failed`, `blocked` ou `cancelled` finalizam a tarefa diretamente nesses estados;
         - `locked_until` é limpo ao final.
@@ -568,6 +572,49 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/tasks/{task}/change-stage:
+    post:
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      operationId: changeTaskStage
+      summary: Alterar estágio operacional
+      description: |
+        Regista uma nova entrada no histórico de estágios da tarefa e atualiza `current_stage` para o valor de `stage`.
+
+        Cada chamada acrescenta uma linha em `stage_history` com o `summary` livre informado. Pode repetir o mesmo `stage`
+        para documentar notas adicionais sem mudar o valor operacional.
+
+        Caso de uso:
+        - evoluir a tarefa no pipeline (análise → implementação, etc.) com justificativa curta;
+        - anotar progresso no mesmo estágio.
+      x-useCases:
+        - Worker ou operador regista transição com texto de contexto.
+        - Automação move a tarefa entre valores de `TaskStage` após cada fase.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskChangeStageRequest'
+            example:
+              stage: implementation:backend
+              summary: Análise concluída. Escopo no módulo de autenticação.
+      responses:
+        '200':
+          description: Estágio atualizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
   /api/tasks/{task}/executions:
@@ -831,7 +878,7 @@ components:
         is_active:
           type: boolean
           default: true
-    TaskWriteRequest:
+    TaskCreateRequest:
       type: object
       required: [project_id, title, description, priority, implementation_type, current_stage]
       properties:
@@ -870,139 +917,44 @@ components:
           enum: [feature, fix]
         current_stage:
           $ref: '#/components/schemas/TaskStageValue'
-        analysis_domain:
-          oneOf:
-            - $ref: '#/components/schemas/TaskAnalysisDomainValue'
-            - type: 'null'
-        analysis_confidence:
-          type:
-            - number
-            - 'null'
-          minimum: 0
-          maximum: 1
-        analysis_next_stage:
-          oneOf:
-            - $ref: '#/components/schemas/TaskStageValue'
-            - type: 'null'
-        analysis_summary:
-          type:
-            - string
-            - 'null'
-        analysis_evidence:
-          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        analysis_risks:
-          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        analysis_artifacts:
-          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        analysis_notes:
-          type:
-            - string
-            - 'null'
-        stage_execution_reference:
-          type:
-            - string
-            - 'null'
-          maxLength: 255
-        stage_execution_stage:
-          oneOf:
-            - $ref: '#/components/schemas/TaskStageValue'
-            - type: 'null'
-        stage_execution_status:
-          type:
-            - string
-            - 'null'
-          maxLength: 255
-        stage_execution_agent:
-          type:
-            - string
-            - 'null'
-          maxLength: 255
-        stage_execution_summary:
-          type:
-            - string
-            - 'null'
-        stage_execution_output:
-          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        stage_execution_raw_output:
-          type:
-            - string
-            - 'null'
-        stage_execution_exit_code:
+    TaskUpdateRequest:
+      type: object
+      required: [project_id, title, description, priority, implementation_type]
+      description: Não inclui `current_stage`. Para mudar o estágio use `POST /api/tasks/{task}/change-stage`.
+      properties:
+        project_id:
+          type: integer
+          minimum: 1
+        environment_profile_id:
           type:
             - integer
             - 'null'
-        stage_execution_started_at:
+          minimum: 1
+          description: Quando informado, deve pertencer ao mesmo projeto enviado em `project_id`.
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        deliverables:
           type:
             - string
             - 'null'
-          format: date-time
-        stage_execution_finished_at:
+        constraints:
           type:
             - string
             - 'null'
-          format: date-time
-        stage_execution_context:
-          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        handoff_from_stage:
-          oneOf:
-            - $ref: '#/components/schemas/TaskStageValue'
-            - type: 'null'
-        handoff_to_stage:
-          oneOf:
-            - $ref: '#/components/schemas/TaskStageValue'
-            - type: 'null'
-        handoff_reason:
+        status:
           type:
             - string
             - 'null'
-        handoff_confidence:
-          type:
-            - number
-            - 'null'
-          minimum: 0
-          maximum: 1
-        handoff_summary:
-          type:
-            - string
-            - 'null'
-        handoff_payload:
-          description: Aceita objeto JSON ou string JSON válida; a aplicação normaliza arrays/objetos enviados no payload.
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
+          enum: [draft, pending, claimed, running, review, needs_adjustment, done, failed, blocked, cancelled, null]
+        priority:
+          type: string
+          enum: [low, medium, high]
+        implementation_type:
+          type: string
+          enum: [feature, fix]
     ClaimTaskRequest:
       allOf:
         - $ref: '#/components/schemas/WorkerTaskRequest'
@@ -1022,7 +974,7 @@ components:
           maxLength: 255
         status:
           type: string
-          enum: [done, review, failed, blocked, cancelled]
+          enum: [pending, done, review, failed, blocked, cancelled]
         execution_summary:
           type:
             - string
@@ -1056,6 +1008,15 @@ components:
             - object
             - 'null'
           additionalProperties: true
+    TaskChangeStageRequest:
+      type: object
+      required: [stage, summary]
+      properties:
+        stage:
+          $ref: '#/components/schemas/TaskStageValue'
+        summary:
+          type: string
+          maxLength: 65535
     TaskReviewWriteRequest:
       type: object
       required: [decision]
@@ -1153,146 +1114,22 @@ components:
       type: string
       enum: [analysis, implementation:backend, implementation:frontend, implementation:infra]
       description: Estágio atual ou alvo da tarefa dentro do pipeline operacional.
-    TaskAnalysisDomainValue:
-      type: string
-      enum: [backend, frontend, infra]
-      description: Domínio técnico identificado durante a análise da tarefa.
-    TaskAnalysis:
+    TaskStageHistoryItem:
       type: object
-      required: [domain, confidence, next_stage, summary, evidence, risks, artifacts, notes]
+      required: [id, stage, summary, created_at, updated_at]
       properties:
-        domain:
-          oneOf:
-            - $ref: '#/components/schemas/TaskAnalysisDomainValue'
-            - type: 'null'
-        confidence:
-          type:
-            - number
-            - 'null'
-          minimum: 0
-          maximum: 1
-        next_stage:
-          oneOf:
-            - $ref: '#/components/schemas/TaskStageValue'
-            - type: 'null'
-        summary:
-          type:
-            - string
-            - 'null'
-        evidence:
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        risks:
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        artifacts:
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        notes:
-          type:
-            - string
-            - 'null'
-    TaskStageExecution:
-      type: object
-      required: [reference, stage, status, agent, summary, output, raw_output, exit_code, started_at, finished_at, context]
-      properties:
-        reference:
-          type:
-            - string
-            - 'null'
+        id:
+          type: integer
         stage:
-          oneOf:
-            - $ref: '#/components/schemas/TaskStageValue'
-            - type: 'null'
-        status:
-          type:
-            - string
-            - 'null'
-        agent:
-          type:
-            - string
-            - 'null'
+          $ref: '#/components/schemas/TaskStageValue'
         summary:
-          type:
-            - string
-            - 'null'
-        output:
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-        raw_output:
-          type:
-            - string
-            - 'null'
-        exit_code:
-          type:
-            - integer
-            - 'null'
-        started_at:
-          type:
-            - string
-            - 'null'
+          type: string
+        created_at:
+          type: string
           format: date-time
-        finished_at:
-          type:
-            - string
-            - 'null'
+        updated_at:
+          type: string
           format: date-time
-        context:
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
-    TaskHandoff:
-      type: object
-      required: [from_stage, to_stage, reason, confidence, summary, payload]
-      properties:
-        from_stage:
-          oneOf:
-            - $ref: '#/components/schemas/TaskStageValue'
-            - type: 'null'
-        to_stage:
-          oneOf:
-            - $ref: '#/components/schemas/TaskStageValue'
-            - type: 'null'
-        reason:
-          type:
-            - string
-            - 'null'
-        confidence:
-          type:
-            - number
-            - 'null'
-          minimum: 0
-          maximum: 1
-        summary:
-          type:
-            - string
-            - 'null'
-        payload:
-          oneOf:
-            - type: object
-              additionalProperties: true
-            - type: array
-              items: {}
-            - type: 'null'
     Task:
       type: object
       required:
@@ -1306,9 +1143,6 @@ components:
         - status
         - implementation_type
         - current_stage
-        - analysis
-        - stage_execution
-        - handoff
         - review_status
         - revision_count
         - priority
@@ -1392,12 +1226,11 @@ components:
           enum: [feature, fix]
         current_stage:
           $ref: '#/components/schemas/TaskStageValue'
-        analysis:
-          $ref: '#/components/schemas/TaskAnalysis'
-        stage_execution:
-          $ref: '#/components/schemas/TaskStageExecution'
-        handoff:
-          $ref: '#/components/schemas/TaskHandoff'
+        stage_history:
+          type: array
+          description: Presente quando `stageHistories` é carregado no resource (criação, detalhe, atualização, change-stage, claim, heartbeat, finish).
+          items:
+            $ref: '#/components/schemas/TaskStageHistoryItem'
         review_status:
           type:
             - string

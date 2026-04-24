@@ -1,124 +1,58 @@
 # Fluxo de estágios das tarefas
 
-Este documento descreve o modelo de estágios atualmente implementado para `Task`, tanto no painel quanto na API.
+Este documento descreve o modelo simplificado de estágios para `Task`, no painel e na API.
 
 ## Visão geral
 
-Cada tarefa possui um estágio operacional em `current_stage`. O estágio indica em que parte do fluxo a demanda está naquele momento.
+Cada tarefa tem um **`current_stage`** (enum `TaskStage`) e um **histórico ordenado** de transições na tabela `task_stage_histories`.
 
-Valores suportados:
+Valores de estágio:
 
 * `analysis`
 * `implementation:backend`
 * `implementation:frontend`
 * `implementation:infra`
 
-O estágio é obrigatório na criação e na atualização de tarefas.
+Na **criação** da tarefa, define-se o estágio inicial; é criada automaticamente a primeira linha de histórico com o resumo fixo `Tarefa criada`.
 
-## Blocos de dados relacionados
+## Histórico (`task_stage_histories`)
 
-Além de `current_stage`, a tarefa expõe três blocos complementares:
+Cada registo contém:
 
-### `analysis`
+* `stage`: estágio associado a essa linha (valor de `TaskStage`)
+* `summary`: texto livre que descreve o contexto da transição ou nota
+* `created_at` / `updated_at`: carimbos temporais
 
-Representa o resultado da triagem técnica da tarefa.
+O histórico é **apenas uma lista cronológica**; não há blocos separados de análise, execução ou handoff na base de dados.
 
-Campos disponíveis:
+## API: alterar estágio (`POST /api/tasks/{task}/change-stage`)
 
-* `domain`: `backend`, `frontend` ou `infra`
-* `confidence`: número entre `0` e `1`
-* `next_stage`: próximo estágio sugerido
-* `summary`: resumo da análise
-* `evidence`: evidências em JSON
-* `risks`: riscos em JSON
-* `artifacts`: artefatos em JSON
-* `notes`: observações livres
+Corpo JSON (ver `TaskChangeStageRequest` no `openapi.yml`):
 
-Uso esperado:
+* **`stage`** (obrigatório): um dos valores de `TaskStage`
+* **`summary`** (obrigatório): texto livre (até ~64 KiB)
 
-* classificar a demanda
-* justificar a escolha do próximo estágio
-* registrar contexto para quem vai executar a implementação
+Efeito:
 
-### `stage_execution`
+1. Insere uma linha em `task_stage_histories` com `stage` e `summary`
+2. Atualiza `tasks.current_stage` para o mesmo `stage`
 
-Representa a execução técnica associada a um estágio específico.
+Pode enviar o **mesmo** `stage` que o atual para acrescentar apenas uma nota ao histórico (o `current_stage` mantém-se coerente).
 
-Campos disponíveis:
+## Atualização geral da tarefa (`PUT` / `PATCH /api/tasks/{task}`)
 
-* `reference`: identificador externo ou interno da execução
-* `stage`: estágio executado
-* `status`: estado livre da execução do estágio
-* `agent`: agente, worker ou executor responsável
-* `summary`: resumo técnico
-* `output`: saída estruturada em JSON
-* `raw_output`: saída textual bruta
-* `exit_code`: código de saída
-* `started_at`: início da execução
-* `finished_at`: fim da execução
-* `context`: contexto complementar em JSON
+O **`current_stage` não é alterado** por estes endpoints. Para mudar estágio, use sempre `change-stage`.
 
-Uso esperado:
+## Painel web
 
-* registrar a execução da etapa técnica
-* armazenar saída de automação
-* manter rastreabilidade por estágio
-
-### `handoff`
-
-Representa a transferência de contexto entre estágios.
-
-Campos disponíveis:
-
-* `from_stage`: estágio de origem
-* `to_stage`: estágio de destino
-* `reason`: motivo da transição
-* `confidence`: confiança da transição, entre `0` e `1`
-* `summary`: resumo do handoff
-* `payload`: contexto estruturado em JSON
-
-Uso esperado:
-
-* documentar por que a tarefa mudou de estágio
-* transferir contexto de análise para implementação
-* guardar payload útil para o próximo executor
-
-## Regras práticas observadas na implementação
-
-* `current_stage` é validado contra o enum `TaskStage`.
-* `analysis.domain` é validado contra o enum `TaskAnalysisDomain`.
-* `analysis.next_stage`, `stage_execution.stage`, `handoff.from_stage` e `handoff.to_stage` aceitam apenas valores válidos de `TaskStage`.
-* campos JSON aceitam tanto string JSON válida quanto array/objeto no payload; a aplicação normaliza arrays antes de validar.
-* `stage_execution.finished_at` deve ser maior ou igual a `stage_execution.started_at`.
-
-## Exemplo de payload
-
-```json
-{
-  "project_id": 1,
-  "environment_profile_id": 2,
-  "title": "Corrigir callback de autenticação",
-  "description": "Ajustar o fluxo após o login social.",
-  "priority": "high",
-  "implementation_type": "fix",
-  "current_stage": "analysis",
-  "analysis_domain": "backend",
-  "analysis_confidence": 0.92,
-  "analysis_next_stage": "implementation:backend",
-  "analysis_summary": "Fluxo localizado no controller de autenticação.",
-  "analysis_evidence": {
-    "entrypoint": "AuthController"
-  },
-  "handoff_to_stage": "implementation:backend"
-}
-```
+* **Criar tarefa:** escolhe-se o estágio inicial no formulário.
+* **Ficha da tarefa:** tabela de evolução + formulário que faz `POST` para `tasks.change-stage` com `stage` e `summary`.
 
 ## Referências no código
 
-Os contratos acima refletem a implementação atual nestes pontos:
-
 * `app/Support/Enums/TaskStage.php`
-* `app/Support/Enums/TaskAnalysisDomain.php`
-* `app/Http/Requests/Task/StoreTaskRequest.php`
-* `app/Http/Requests/Task/UpdateTaskRequest.php`
-* `app/Http/Resources/TaskResource.php`
+* `app/Models/TaskStageHistory.php`
+* `app/Http/Requests/Task/ChangeTaskStageRequest.php`
+* `app/Services/Task/ChangeTaskStageService.php`
+* `app/Http/Requests/Task/StoreTaskRequest.php` / `UpdateTaskRequest.php`
+* `database/migrations/2026_04_24_131129_create_task_stage_histories_table.php`

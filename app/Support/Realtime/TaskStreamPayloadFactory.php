@@ -24,7 +24,7 @@ class TaskStreamPayloadFactory
      */
     public function make(string $type, Task $task, array $previous = [], array $changedAttributes = [], ?CarbonInterface $occurredAt = null): array
     {
-        $task->loadMissing(['project', 'environmentProfile', 'lastReviewer', 'creator']);
+        $task->loadMissing(['project', 'environmentProfile', 'lastReviewer', 'creator', 'stageHistories']);
 
         /** @var array<string, mixed> $taskSnapshot */
         $taskSnapshot = (new TaskResource($task))->toArray(Request::create('/'));

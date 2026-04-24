@@ -38,12 +38,6 @@ class TaskShowAndReviewTest extends TestCase
             'priority' => TaskPriority::Medium,
             'review_status' => TaskReviewStatus::PendingReview,
             'current_stage' => TaskStage::Analysis,
-            'analysis_domain' => 'backend',
-            'analysis_next_stage' => TaskStage::ImplementationBackend,
-            'stage_execution_stage' => TaskStage::ImplementationBackend,
-            'stage_execution_status' => 'completed',
-            'handoff_from_stage' => TaskStage::Analysis,
-            'handoff_to_stage' => TaskStage::ImplementationBackend,
         ]);
 
         TaskExecution::factory()->create([
@@ -60,10 +54,8 @@ class TaskShowAndReviewTest extends TestCase
             ->assertSee($task->title)
             ->assertSee('Voltar à lista')
             ->assertSee('task-stream-config', false)
-            ->assertSee('grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3', false)
-            ->assertSee('Dados de análise')
-            ->assertSee('Dados de execução')
-            ->assertSee('Dados de handoff')
+            ->assertSee('Evolução de estágios')
+            ->assertSee('Registar transição de estágio', false)
             ->assertSee('Histórico de execuções')
             ->assertSee('Histórico de revisões')
             ->assertSee('Registrar revisão funcional')

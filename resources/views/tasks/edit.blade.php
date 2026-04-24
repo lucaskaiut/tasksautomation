@@ -2,7 +2,7 @@
 
 @section('title', 'Editar tarefa')
 @section('page-title', 'Editar tarefa')
-@section('page-description', 'Atualize os dados da tarefa mantendo separados estágio, análise, execução e handoff.')
+@section('page-description', 'Atualize os dados da tarefa; o estágio muda apenas na página da tarefa ou pela API.')
 
 @section('content')
     <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

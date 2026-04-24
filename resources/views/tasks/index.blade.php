@@ -2,7 +2,7 @@
 
 @section('title', 'Tarefas')
 @section('page-title', 'Tarefas')
-@section('page-description', 'Acompanhe o fluxo orientado por estágio, execução, análise e handoff das tarefas em andamento.')
+@section('page-description', 'Acompanhe tarefas por estágio e histórico de evolução.')
 
 @section('page-actions')
     <a

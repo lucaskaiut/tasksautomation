@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Task\ChangeTaskStageRequest;
 use App\Http\Requests\Task\ClaimTaskRequest;
 use App\Http\Requests\Task\FinishTaskRequest;
 use App\Http\Requests\Task\StoreTaskRequest;
@@ -10,13 +11,16 @@ use App\Http\Requests\Task\TaskHeartbeatRequest;
 use App\Http\Requests\Task\UpdateTaskRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
+use App\Services\Task\ChangeTaskStageService;
 use App\Services\Task\ClaimTaskService;
 use App\Services\Task\CreateTaskService;
 use App\Services\Task\FinishTaskService;
 use App\Services\Task\TaskHeartbeatService;
 use App\Services\Task\UpdateTaskService;
+use App\Support\Enums\TaskStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 
 class TaskController extends Controller
 {
@@ -43,7 +47,7 @@ class TaskController extends Controller
     {
         $task = $service->handle($request->taskData(), $request->user());
 
-        $task->load(['project', 'environmentProfile', 'lastReviewer']);
+        $task->load(['project', 'environmentProfile', 'lastReviewer', 'stageHistories']);
 
         return (new TaskResource($task))
             ->additional(['message' => 'Tarefa criada com sucesso.'])
@@ -58,7 +62,7 @@ class TaskController extends Controller
     {
         $this->authorize('view', $task);
 
-        $task->load(['project', 'environmentProfile', 'lastReviewer']);
+        $task->load(['project', 'environmentProfile', 'lastReviewer', 'stageHistories']);
 
         return (new TaskResource($task))
             ->additional(['message' => 'Tarefa.']);
@@ -70,13 +74,13 @@ class TaskController extends Controller
     public function update(UpdateTaskRequest $request, Task $task, UpdateTaskService $service): TaskResource
     {
         $task = $service->handle($task, $request->taskData());
-        $task->load(['project', 'environmentProfile', 'lastReviewer']);
+        $task->load(['project', 'environmentProfile', 'lastReviewer', 'stageHistories']);
 
         return (new TaskResource($task))
             ->additional(['message' => 'Tarefa atualizada com sucesso.']);
     }
 
-    public function claim(ClaimTaskRequest $request, ClaimTaskService $service): JsonResponse|\Illuminate\Http\Response
+    public function claim(ClaimTaskRequest $request, ClaimTaskService $service): JsonResponse|Response
     {
         $task = $service->handle($request->string('worker_id')->toString());
 
@@ -85,7 +89,7 @@ class TaskController extends Controller
                 ->noContent();
         }
 
-        $task->load(['project', 'environmentProfile', 'lastReviewer']);
+        $task->load(['project', 'environmentProfile', 'lastReviewer', 'stageHistories']);
 
         return (new TaskResource($task))
             ->additional(['message' => 'Tarefa claimada com sucesso.'])
@@ -96,10 +100,19 @@ class TaskController extends Controller
     public function heartbeat(TaskHeartbeatRequest $request, Task $task, TaskHeartbeatService $service): TaskResource
     {
         $task = $service->handle($task, $request->string('worker_id')->toString());
-        $task->load(['project', 'environmentProfile', 'lastReviewer']);
+        $task->load(['project', 'environmentProfile', 'lastReviewer', 'stageHistories']);
 
         return (new TaskResource($task))
             ->additional(['message' => 'Heartbeat registrado com sucesso.']);
+    }
+
+    public function changeStage(ChangeTaskStageRequest $request, Task $task, ChangeTaskStageService $service): TaskResource
+    {
+        $task = $service->handle($task, $request->toStage(), $request->summaryText());
+        $task->load(['project', 'environmentProfile', 'lastReviewer', 'stageHistories']);
+
+        return (new TaskResource($task))
+            ->additional(['message' => 'Estágio da tarefa atualizado com sucesso.']);
     }
 
     public function finish(FinishTaskRequest $request, Task $task, FinishTaskService $service): TaskResource
@@ -107,7 +120,7 @@ class TaskController extends Controller
         $task = $service->handle(
             task: $task,
             workerId: $request->string('worker_id')->toString(),
-            requestedStatus: \App\Support\Enums\TaskStatus::from($request->string('status')->toString()),
+            requestedStatus: TaskStatus::from($request->string('status')->toString()),
             executionSummary: $request->string('execution_summary')->toString() ?: null,
             failureReason: $request->string('failure_reason')->toString() ?: null,
             branchName: $request->string('branch_name')->toString() ?: null,
@@ -117,7 +130,7 @@ class TaskController extends Controller
             metadata: $request->input('metadata'),
         );
 
-        $task->load(['project', 'environmentProfile', 'lastReviewer']);
+        $task->load(['project', 'environmentProfile', 'lastReviewer', 'stageHistories']);
 
         return (new TaskResource($task))
             ->additional(['message' => 'Tarefa finalizada com sucesso.']);

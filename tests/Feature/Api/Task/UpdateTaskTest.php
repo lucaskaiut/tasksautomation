@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\Task;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Enums\TaskStage;
 use App\Support\Enums\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -21,6 +22,7 @@ class UpdateTaskTest extends TestCase
         $project = Project::factory()->create();
         $task = Task::factory()->create([
             'project_id' => $project->id,
+            'current_stage' => TaskStage::Analysis,
         ]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -34,27 +36,18 @@ class UpdateTaskTest extends TestCase
                 'status' => 'pending',
                 'priority' => 'high',
                 'implementation_type' => 'fix',
-                'current_stage' => 'implementation:frontend',
-                'analysis_domain' => 'frontend',
-                'analysis_next_stage' => 'implementation:frontend',
-                'stage_execution_stage' => 'implementation:frontend',
-                'handoff_to_stage' => 'implementation:frontend',
             ])
             ->assertOk()
             ->assertJsonPath('data.title', 'Updated title')
             ->assertJsonPath('data.implementation_type', 'fix')
-            ->assertJsonPath('data.current_stage', 'implementation:frontend')
-            ->assertJsonPath('data.analysis.domain', 'frontend')
-            ->assertJsonPath('data.stage_execution.stage', 'implementation:frontend');
+            ->assertJsonPath('data.current_stage', TaskStage::Analysis->value);
 
         $this->assertDatabaseHas('tasks', [
             'id' => $task->id,
             'title' => 'Updated title',
             'priority' => 'high',
             'implementation_type' => 'fix',
-            'current_stage' => 'implementation:frontend',
-            'analysis_domain' => 'frontend',
-            'handoff_to_stage' => 'implementation:frontend',
+            'current_stage' => TaskStage::Analysis->value,
         ]);
     }
 
@@ -112,6 +105,6 @@ class UpdateTaskTest extends TestCase
                 'priority' => 'invalid',
             ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['title', 'description', 'priority', 'implementation_type', 'current_stage']);
+            ->assertJsonValidationErrors(['title', 'description', 'priority', 'implementation_type']);
     }
 }

@@ -29,6 +29,7 @@ Route::name('api.')->group(function () {
         Route::post('tasks/claim', [TaskController::class, 'claim'])->name('tasks.claim');
         Route::post('tasks/{task}/heartbeat', [TaskController::class, 'heartbeat'])->name('tasks.heartbeat');
         Route::post('tasks/{task}/finish', [TaskController::class, 'finish'])->name('tasks.finish');
+        Route::post('tasks/{task}/change-stage', [TaskController::class, 'changeStage'])->name('tasks.change-stage');
 
         Route::get('tasks/{task}/executions', [TaskExecutionController::class, 'index'])->name('tasks.executions.index');
         Route::get('task-executions/{taskExecution}', [TaskExecutionController::class, 'show'])->name('task-executions.show');

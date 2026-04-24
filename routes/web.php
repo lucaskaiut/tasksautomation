@@ -35,6 +35,9 @@ Route::middleware('auth')->group(function () {
         'index', 'create', 'store', 'show', 'edit', 'update',
     ]);
 
+    Route::post('tasks/{task}/change-stage', [TaskController::class, 'changeStage'])
+        ->name('tasks.change-stage');
+
     Route::post('tasks/{task}/executions/{taskExecution}/reviews', [TaskReviewController::class, 'store'])
         ->name('tasks.executions.reviews.store');
 });
